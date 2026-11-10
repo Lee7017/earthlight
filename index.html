@@ -3,12 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#070d17" />
-  <meta name="description" content="Earthlight：实时观察地球与太阳的位置、昼夜分布和晨昏线。默认面向中国，纯浏览器运行。" />
-  <title>Earthlight — 此刻的昼与夜</title>
+  <meta name="theme-color" content="#080f19" />
+  <meta name="description" content="Earthlight：实时地球昼夜、公转自转、四季晨昏线，纯前端运行。" />
+  <title>Earthlight · 地球昼夜与四季</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-  <link rel="preconnect" href="https://threejs.org" crossorigin />
   <link rel="stylesheet" href="./src/styles.css" />
   <script type="importmap">
     {
@@ -24,129 +22,104 @@
   <div class="page-shell">
     <header class="topbar">
       <a class="brand" href="./" aria-label="Earthlight 首页">
-        <span class="brand-symbol"><span class="brand-orbit"></span><span class="brand-core"></span></span>
-        <span class="brand-type"><strong>EARTHLIGHT</strong><small>SOLAR OBSERVATORY</small></span>
+        <span class="brand-symbol" aria-hidden="true"><span class="brand-orbit"></span><span class="brand-core"></span></span>
+        <span class="brand-type"><strong>EARTHLIGHT</strong><small>地球 · 太阳 · 四季</small></span>
       </a>
       <div class="header-right">
-        <span class="live-pill" id="header-status"><span class="live-dot"></span><span id="header-status-label">LIVE <span class="live-word">· REAL TIME</span></span></span>
-        <a class="repo-link" href="https://github.com/Lee7017/earthlight" target="_blank" rel="noopener noreferrer" aria-label="查看 GitHub 源码">
+        <div class="live-pill" id="header-status">
+          <span class="live-dot" aria-hidden="true"></span>
+          <span id="header-status-label">实时</span>
+        </div>
+        <div class="header-clock">
+          <div class="clock-caption"><span id="clock-mode-label">当前时刻</span><span class="clock-zone">北京时间</span></div>
+          <strong id="beijing-time" class="time-display" aria-live="off">--:--<span>:--</span></strong>
+          <span id="beijing-date" class="clock-date">—</span>
+        </div>
+        <a class="repo-link" href="https://github.com/Lee7017/earthlight" target="_blank" rel="noopener noreferrer" aria-label="查看 GitHub 源代码" title="源代码">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .9a11.1 11.1 0 0 0-3.51 21.63c.55.1.76-.24.76-.54v-2.12c-3.09.67-3.74-1.31-3.74-1.31-.5-1.28-1.22-1.62-1.22-1.62-1.01-.69.07-.68.07-.68 1.12.08 1.71 1.15 1.71 1.15.99 1.69 2.6 1.2 3.24.92.1-.72.39-1.2.7-1.48-2.47-.28-5.06-1.24-5.06-5.48 0-1.21.43-2.2 1.14-2.97-.11-.28-.49-1.41.11-2.93 0 0 .93-.3 3.05 1.13a10.6 10.6 0 0 1 5.56 0c2.12-1.44 3.05-1.13 3.05-1.13.6 1.52.22 2.65.11 2.93.71.77 1.14 1.76 1.14 2.97 0 4.25-2.6 5.19-5.08 5.47.4.35.76 1.02.76 2.06v3.06c0 .3.2.65.77.54A11.1 11.1 0 0 0 12 .9Z"/></svg>
-          <span>源代码</span>
         </a>
       </div>
     </header>
 
     <main class="dashboard">
-      <section class="intro-panel" aria-labelledby="hero-title">
-        <div class="section-kicker"><span class="kicker-line"></span> EARTH / SUN / NOW</div>
-        <h1 id="hero-title">此刻的<br /><span>昼与夜<span class="period">。</span></span></h1>
-
-        <div class="time-group">
-          <div class="group-heading"><span class="tiny-circle"></span> <span id="clock-mode-label">当前时刻</span> <span class="minor-tag">UTC +08</span></div>
-          <div class="time-display" id="beijing-time" aria-live="off">--:--<span>:--</span></div>
-          <div class="date-display" id="beijing-date">正在同步时间…</div>
-          <div class="utc-row"><span>UTC 协调世界时</span><strong id="utc-time">--:--:--</strong></div>
-        </div>
-
-        <div class="info-divider"></div>
-
-        <div class="field-heading">太阳直射点 <span class="field-heading-en">SUBSOLAR POINT</span></div>
-        <div class="coordinate-grid">
-          <div class="coordinate-card">
-            <span>纬度 · LATITUDE</span>
-            <strong id="sun-latitude">--°</strong>
-          </div>
-          <div class="coordinate-card">
-            <span>经度 · LONGITUDE</span>
-            <strong id="sun-longitude">--°</strong>
-          </div>
-        </div>
-        <p class="data-note">太阳光此刻垂直照射的地表位置。位置根据 UTC 时间实时计算。</p>
-
-      </section>
-
-      <section class="globe-panel" aria-label="交互式三维地球">
+      <section class="globe-panel" aria-labelledby="hero-title">
         <div class="globe-top">
-          <span class="globe-index" id="map-quality">01 / EARTH VIEW · LOADING</span>
-          <div class="view-switch" role="group" aria-label="选择地球观察视角">
+          <div class="hero-heading">
+            <h1 id="hero-title">此刻的<span>昼与夜</span></h1>
+            <span class="solar-summary">太阳直射点 <strong id="sun-latitude">--°</strong><span class="summary-dot">·</span><strong id="sun-longitude">--°</strong></span>
+          </div>
+          <div class="view-switch" role="group" aria-label="选择观察视角">
             <button class="mode-button" type="button" data-view="earth" aria-pressed="false">地表</button>
             <button class="mode-button" type="button" data-view="orbit" aria-pressed="false">轨道</button>
             <button class="mode-button is-active" type="button" data-view="dual" aria-pressed="true">双视图</button>
           </div>
-          <span class="globe-mode" id="globe-mode"><span class="mode-dot"></span><span id="globe-mode-label">LIVE ILLUMINATION</span></span>
+          <span class="sr-only" id="map-quality">01 / EARTH VIEW · LOADING</span>
+          <span class="sr-only" id="globe-mode"><span id="globe-mode-label">LIVE ILLUMINATION</span></span>
         </div>
-        <nav class="city-presets" aria-label="城市视角快捷切换">
-          <span class="city-presets-label">城市视角</span>
+
+        <nav class="city-presets" aria-label="城市观察位置">
+          <span class="city-presets-label">定位城市</span>
           <button class="city-chip active" type="button" data-city="beijing" aria-pressed="true">北京</button>
           <button class="city-chip" type="button" data-city="xiongan" aria-pressed="false">雄安</button>
           <button class="city-chip" type="button" data-city="xian" aria-pressed="false">西安</button>
           <button class="city-chip" type="button" data-city="urumqi" aria-pressed="false">乌鲁木齐</button>
           <button class="city-chip" type="button" data-city="london" aria-pressed="false">伦敦</button>
-          <button class="city-chip" type="button" data-city="silicon-valley" aria-pressed="false" title="以加州山景城作为硅谷代表位置">硅谷</button>
+          <button class="city-chip" type="button" data-city="silicon-valley" aria-pressed="false" title="以加州山景城为硅谷代表地点">硅谷</button>
         </nav>
+
         <div class="visualization-layout is-dual" id="visualization-layout" data-view="dual">
-        <div class="globe-stage" id="globe-stage">
-          <div class="orbital-halo halo-a"></div>
-          <div class="orbital-halo halo-b"></div>
-          <div id="globe-mount" class="globe-mount" aria-label="可拖动旋转、滚轮缩放的三维地球"></div>
-          <div class="loading-overlay" id="loading-overlay"><span class="loading-ring"></span><span>正在构建地球…</span></div>
-          <div class="globe-pin focused-city-pin" id="city-pin"><span class="pin-node"></span><span class="pin-text" id="focused-city-label">中国 · 北京</span></div>
-          <div class="globe-pin sun-pin" id="sun-pin"><span class="pin-node"></span><span class="pin-text">太阳直射点</span></div>
-          <div class="preview-overlay" id="preview-overlay" hidden aria-label="24 小时预演进度">
+          <section class="globe-stage" id="globe-stage" aria-label="实时地球昼夜光影">
+            <div class="panel-heading"><span class="panel-identity">地球昼夜</span><span class="panel-detail">实时晨昏线</span></div>
+            <div id="globe-mount" class="globe-mount" aria-label="拖动旋转或滚轮缩放地球"></div>
+            <div class="loading-overlay" id="loading-overlay"><span class="loading-ring"></span><span>正在加载地球…</span></div>
+            <div class="globe-pin focused-city-pin" id="city-pin"><span class="pin-node"></span><span class="pin-text" id="focused-city-label">中国 · 北京</span></div>
+            <div class="globe-pin sun-pin" id="sun-pin"><span class="pin-node"></span><span class="pin-text">太阳直射点</span></div>
+            <span class="panel-tip">拖动旋转 · 滚轮缩放</span>
+          </section>
+          <section class="orbit-stage" id="orbit-stage" aria-label="太阳固定在中心，地球公转、自转和四季轨道">
+            <div class="orbit-mount" id="orbit-mount"></div>
+            <div class="panel-heading orbit-header"><span class="panel-identity">公转与自转</span><span class="panel-detail">地轴倾斜 <strong id="orbit-tilt">23.44°</strong></span></div>
+            <span class="season-label" id="season-march">春分</span>
+            <span class="season-label" id="season-june">夏至</span>
+            <span class="season-label" id="season-september">秋分</span>
+            <span class="season-label" id="season-december">冬至</span>
+            <span class="orbit-earth-label" id="orbit-earth-label">地球</span>
+            <span class="orbit-date" id="orbit-date">—</span>
+            <span class="sr-only orbit-sun-label">☀ 太阳固定在中心</span>
+            <span class="orbit-footnote">太阳固定 · 天体大小不按比例</span>
+          </section>
+        </div>
+
+        <div class="globe-bottom">
+          <div class="viewer-actions">
+            <button id="preview-toggle" class="view-button preview-button" type="button" aria-pressed="false" title="24 秒预演接下来 24 小时">
+              <span id="preview-icon" class="preview-play-icon" aria-hidden="true">▶</span><span id="preview-button-label">24 小时预演</span>
+            </button>
+            <button id="year-preview-toggle" class="view-button year-preview-button" type="button" aria-pressed="false" title="720 秒预演接下来一年，约 2 秒一个太阳日">
+              <span id="year-preview-icon" aria-hidden="true">◉</span><span id="year-preview-label">四季预演 · 12 分钟</span>
+            </button>
+            <button id="terminator-toggle" class="view-button selected" type="button" aria-pressed="true" title="显示或隐藏晨昏线">
+              <span class="boundary-symbol" aria-hidden="true"></span><span>晨昏线</span>
+            </button>
+            <button id="reset-view" class="view-button" type="button" title="回到北京默认视角">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2.64 6.36"/><path d="M3 4v7h7"/></svg><span>回到北京</span>
+            </button>
+          </div>
+          <div class="preview-overlay" id="preview-overlay" hidden aria-label="预演进度">
             <div class="preview-overlay-top"><span id="preview-heading">24H / TIME-LAPSE</span><strong id="preview-elapsed">+00:00 / +24:00</strong></div>
             <div class="preview-track" id="preview-track" role="progressbar" aria-label="预演进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="preview-track-fill"></span></div>
             <div class="preview-overlay-bottom"><span id="preview-start-label">从当前时刻开始</span><span id="preview-end-label">未来 24 小时</span></div>
           </div>
-          <div class="view-annotation top-left">N<span class="annotation-line"></span> 90°</div>
-          <div class="view-annotation bottom-right">3D / WGS84 <span class="micro-cross">✳</span></div>
-        </div>
-        <section class="orbit-stage" id="orbit-stage" aria-label="太阳固定于中心，地球公转、自转及地轴倾斜的三维轨道图">
-          <div class="orbit-mount" id="orbit-mount"></div>
-          <div class="orbit-header"><span>02 / HELIOCENTRIC VIEW</span><span class="orbit-live-dot"></span></div>
-          <div class="orbit-sun-label">☀ 太阳固定在中心</div>
-          <span class="season-label" id="season-march">春分 · 3月</span>
-          <span class="season-label" id="season-june">夏至 · 6月</span>
-          <span class="season-label" id="season-september">秋分 · 9月</span>
-          <span class="season-label" id="season-december">冬至 · 12月</span>
-          <span class="orbit-earth-label" id="orbit-earth-label">地球 · 公转中</span>
-          <div class="orbit-readout">
-            <div><span>模拟日期 · UTC</span><strong id="orbit-date">—</strong></div>
-            <div><span>地轴倾角</span><strong id="orbit-tilt">23.44°</strong></div>
-          </div>
-          <div class="orbit-caption">地球同时自转与公转 · 地轴方向基本保持不变<br />球体大小经过放大，日地尺度不按比例</div>
-        </section>
-        </div>
-        <div class="globe-bottom">
-          <div class="controls-hint">
-            <span class="gesture-icon">⤨</span><span>拖动旋转</span>
-            <span class="hint-sep">/</span>
-            <span>滚轮缩放</span>
-          </div>
-          <div class="viewer-actions">
-            <button id="preview-toggle" class="view-button preview-button" type="button" aria-pressed="false" title="将未来 24 小时的昼夜变化压缩到 24 秒预演">
-              <span id="preview-icon" class="preview-play-icon" aria-hidden="true">▶</span><span id="preview-button-label">24 小时预演</span>
-            </button>
-            <button id="year-preview-toggle" class="view-button year-preview-button" type="button" aria-pressed="false" title="将一个回归年的公转、自转及四季晨昏线变化压缩到 720 秒，约每 2 秒经过一个太阳日">
-              <span id="year-preview-icon" aria-hidden="true">◉</span><span id="year-preview-label">365 天 · 四季预演</span>
-            </button>
-            <button id="terminator-toggle" class="view-button selected" type="button" aria-pressed="true" title="显示或隐藏晨昏线">
-              <span class="button-circle boundary-symbol"></span>晨昏线
-            </button>
-            <button id="reset-view" class="view-button reset-button" type="button" title="回到中国北京的默认视角">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2.64 6.36"/><path d="M3 4v7h7"/></svg> 北京视角
-            </button>
-          </div>
         </div>
         <div class="globe-error" id="globe-error" role="status" hidden></div>
       </section>
-
+      <span id="utc-time" class="sr-only">--:--:--</span>
+      <span id="updated-at" class="sr-only">实时同步</span>
     </main>
 
     <footer class="footer">
-      <span>EARTHLIGHT <span class="footer-dot">·</span> A WINDOW TO OUR PLANET</span>
-      <span>PURE FRONTEND <span class="footer-dot">/</span> THREE.JS <span class="footer-dot">/</span> SOLAR EPHEMERIS</span>
-      <span><a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener noreferrer" title="Earth textures by Solar System Scope, CC BY 4.0">地图素材 © Solar System Scope · CC BY 4.0</a></span>
-      <span id="updated-at">每秒与当前时间同步</span>
+      <span>太阳与地球的相对运动依据天文公式计算；天体大小未按比例。</span>
+      <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener noreferrer" title="地图素材来源和授权">地图 © Solar System Scope · CC BY 4.0</a>
     </footer>
   </div>
 </body>

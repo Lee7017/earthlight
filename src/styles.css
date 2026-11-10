@@ -224,3 +224,31 @@ h1 span { color: var(--teal); margin-left: 6px; }
 @media (prefers-reduced-motion: reduce) {
   *,*::before,*::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+
+/* Left-hand physical reference: the inclined tropics band and the horizontal
+   ecliptic sunlight circle are separate from the spinning texture. */
+.sunlight-key {
+  position: absolute; z-index: 4; right: 14px; bottom: 15px;
+  display: flex; align-items: center; justify-content: flex-end;
+  flex-wrap: wrap; gap: 7px 13px; max-width: 80%;
+  pointer-events: none;
+  color: #9fb8bd; font-size: 10px; line-height: 1.3;
+  text-shadow: 0 1px 7px #07131c;
+}
+.sunlight-key > span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.sunlight-key i { display: inline-block; flex: none; width: 15px; height: 3px; border-radius: 6px; }
+.key-tropics { background: rgba(235,182,119,.82); }
+.key-orbit-ring { background: #87e5d6; }
+.key-ray { background: linear-gradient(90deg,#c78642,#ffdb9f); }
+@media (max-width: 760px) {
+  .sunlight-key { right: 11px; bottom: 12px; gap: 5px 9px; max-width: 73%; font-size: 9px; }
+  .sunlight-key i { width: 11px; height: 2px; }
+  .panel-tip { max-width: 28%; font-size: 9px; line-height: 1.55; }
+}
+@media (max-width: 360px) {
+  .sunlight-key { max-width: 80%; gap: 4px 7px; font-size: 8px; }
+  .panel-tip { display: none; }
+}
+body[data-time-mode="year"] .globe-pin,
+body[data-time-mode="year"] .map-city-dot { opacity: 0 !important; }

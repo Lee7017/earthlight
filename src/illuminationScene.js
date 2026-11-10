@@ -3,6 +3,8 @@ import { illuminationFrame } from './illuminationFrame.js';
 import { geographicVector } from './solar.js';
 
 const TAU = 2 * Math.PI;
+// Identical sunlight color for the actual ray and its possible orbital directions.
+export const SUNLIGHT_COLOR = 0xffb000;
 
 function ringGeometry(radius, polarLatitude = null) {
   const vertices = [];
@@ -47,7 +49,7 @@ export function createIlluminationRig(scene, earth, radius) {
     new THREE.SphereGeometry(radius * 1.024, 192, 42, 0, TAU,
       Math.PI / 2 - angle, 2 * angle),
     new THREE.MeshBasicMaterial({
-      color: 0xe4b77f, transparent: true, opacity: .10, depthWrite: false,
+      color: 0xb66cff, transparent: true, opacity: .17, depthWrite: false,
       side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: -1,
     }),
   );
@@ -60,7 +62,7 @@ export function createIlluminationRig(scene, earth, radius) {
     const edge = new THREE.LineLoop(
       ringGeometry(radius * 1.030, latitude),
       new THREE.LineBasicMaterial({
-        color: 0xe9b981, transparent: true, opacity: .56, depthWrite: false,
+        color: 0xb66cff, transparent: true, opacity: .72, depthWrite: false,
       }),
     );
     edge.name = latitude < 0 ? 'tropic-capricorn' : 'tropic-cancer';
@@ -74,7 +76,7 @@ export function createIlluminationRig(scene, earth, radius) {
   const horizontalRing = new THREE.LineLoop(
     ringGeometry(radius * 1.043),
     new THREE.LineBasicMaterial({
-      color: 0x88e5d6, transparent: true, opacity: .90,
+      color: SUNLIGHT_COLOR, transparent: true, opacity: .78,
       depthTest: true, depthWrite: false,
     }),
   );
@@ -87,11 +89,13 @@ export function createIlluminationRig(scene, earth, radius) {
       new THREE.Vector3(0, -radius * 1.28, 0),
       new THREE.Vector3(0, radius * 1.28, 0),
     ]),
-    new THREE.LineBasicMaterial({
-      color: 0xffd39b, transparent: true, opacity: .65, depthWrite: false,
+    new THREE.LineDashedMaterial({
+      color: 0xb9f348, transparent: true, opacity: .85, depthWrite: false,
+      dashSize: .13, gapSize: .085,
     }),
   );
   rotationAxis.name = 'earth-axis';
+  rotationAxis.computeLineDistances();
   tiltGroup.add(rotationAxis);
 
   // The ONLY sunlight ray: one arrow from outside the globe toward the
@@ -101,7 +105,7 @@ export function createIlluminationRig(scene, earth, radius) {
   const centerRay = new THREE.ArrowHelper(
     new THREE.Vector3(-1, 0, 0),
     new THREE.Vector3(radius * 1.93, 0, 0),
-    radius * .86, 0xffc57b, radius * .17, radius * .085,
+    radius * .86, SUNLIGHT_COLOR, radius * .17, radius * .085,
   );
   centerRay.name = 'direct-sunlight-arrow';
   centerRay.line.material.transparent = true;

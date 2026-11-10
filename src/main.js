@@ -425,6 +425,9 @@ function updateAstronomy(now) {
   stage.dataset.sunlightHeight = String(currentSun.y);
   stage.dataset.illuminationFrame = 'orbital-plane';
   stage.dataset.beltFrame = 'inclined-axis';
+  stage.dataset.horizontalRingParent = illuminationRig.horizontalRing.parent?.type || 'none';
+  stage.dataset.tropicsParent = illuminationRig.belt.parent?.name || 'none';
+  stage.dataset.earthSurfaceParent = illuminationRig.spinGroup.name;
 
   $('sun-latitude').textContent = formatCoordinate(subsolar.latitude, 'lat');
   $('sun-longitude').textContent = formatCoordinate(subsolar.longitude, 'lon');

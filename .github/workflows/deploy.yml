@@ -34,6 +34,13 @@ jobs:
           node --check src/solar.js
           node --check src/preview.js
 
+      - name: Browser smoke test (real button interaction)
+        run: |
+          npm install --no-save puppeteer-core@24.30.0
+          python3 -m http.server 8000 --bind 127.0.0.1 > /tmp/earthlight-http.log 2>&1 &
+          sleep 2
+          node tests/browser-smoke.mjs
+
       - name: Prepare static site
         run: |
           mkdir -p _site

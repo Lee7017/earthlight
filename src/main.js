@@ -4,11 +4,11 @@ import { solarPosition, geographicVector, formatCoordinate } from './solar.js';
 import { previewFrame, yearPreviewFrame, TROPICAL_YEAR_DAYS } from './preview.js';
 import { createOrbitViewer } from './orbitViewer.js';
 import { createIlluminationRig } from './illuminationScene.js';
-import { CITIES, getCityById } from './cities.js';
+import { BEIJING } from './cities.js';
 
 const $ = (id) => document.getElementById(id);
 const GLOBE_RADIUS = 2;
-const DEFAULT_CITY = CITIES[0];
+
 const textureBase = './textures/'; // Built site includes both textures locally.
 
 const scene = new THREE.Scene();
@@ -38,35 +38,14 @@ function geoVector(latitude, longitude, radius = 1) {
   return new THREE.Vector3(x * radius, y * radius, z * radius);
 }
 
-// City selection changes camera direction; it never changes the solar clock.
-let activeCity = DEFAULT_CITY;
-let cityCameraMotion = null;
+// The camera starts toward Beijing, but remains independent of the
+// Earth's physical daily spin. The only city label is Beijing.
 let defaultCameraDistance = 6.55;
 let initialFramingDone = false;
-const cityDots = CITIES.map((city) => {
-  const dot = document.createElement('span');
-  dot.className = 'map-city-dot';
-  dot.dataset.city = city.id;
-  dot.setAttribute('aria-hidden', 'true');
-  stage.appendChild(dot);
-  return { city, element: dot };
-});
 
-function syncCityUI() {
-  document.querySelectorAll('.city-chip').forEach((button) => {
-    const selected = button.dataset.city === activeCity.id;
-    button.classList.toggle('active', selected);
-    button.setAttribute('aria-pressed', String(selected));
-  });
-  for (const marker of cityDots) {
-    marker.element.classList.toggle('is-selected', marker.city.id === activeCity.id);
-  }
-  $('focused-city-label').textContent = activeCity.country + ' · ' + activeCity.name;
-  stage.dataset.focusCity = activeCity.id;
-}
-
-function snapCameraTo(city, distance = defaultCameraDistance) {
-  camera.position.copy(illuminationRig.worldGeo(city.latitude, city.longitude, 1).normalize().multiplyScalar(distance));
+function snapCameraToBeijing(distance = defaultCameraDistance) {
+  const direction = illuminationRig.worldGeo(BEIJING.latitude, BEIJING.longitude, 1);
+  camera.position.copy(direction.normalize().multiplyScalar(distance));
   camera.up.set(0, 1, 0);
   camera.lookAt(0, 0, 0);
   controls.target.set(0, 0, 0);
@@ -74,51 +53,10 @@ function snapCameraTo(city, distance = defaultCameraDistance) {
 }
 
 function resetCamera() {
-  activeCity = DEFAULT_CITY;
-  cityCameraMotion = null;
-  snapCameraTo(DEFAULT_CITY);
-  syncCityUI();
+  snapCameraToBeijing();
+  stage.dataset.focusCity = BEIJING.id;
 }
 $('reset-view').addEventListener('click', resetCamera);
-
-function focusCity(id) {
-  const city = getCityById(id);
-  if (!city) return;
-  activeCity = city;
-  syncCityUI();
-  const distance = camera.position.length();
-  const from = camera.position.clone().normalize();
-  const to = illuminationRig.worldGeo(city.latitude, city.longitude, 1).normalize();
-  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  if (reduceMotion) {
-    cityCameraMotion = null;
-    snapCameraTo(city, distance);
-    return;
-  }
-  cityCameraMotion = {
-    from,
-    rotation: new THREE.Quaternion().setFromUnitVectors(from, to),
-    distance,
-    start: performance.now(),
-    duration: 1050,
-  };
-}
-
-document.querySelectorAll('.city-chip').forEach((button) => {
-  button.addEventListener('click', () => focusCity(button.dataset.city));
-});
-controls.addEventListener('start', () => { cityCameraMotion = null; });
-
-function animateCityCamera(timestamp) {
-  if (!cityCameraMotion) return;
-  const flight = cityCameraMotion;
-  const progress = THREE.MathUtils.clamp((timestamp - flight.start) / flight.duration, 0, 1);
-  const eased = progress * progress * (3 - 2 * progress);
-  const rotation = new THREE.Quaternion().identity().slerp(flight.rotation, eased);
-  camera.position.copy(flight.from).applyQuaternion(rotation).multiplyScalar(flight.distance);
-  camera.lookAt(0, 0, 0);
-  if (progress >= 1) cityCameraMotion = null;
-}
 
 const stars = new THREE.BufferGeometry();
 const starCoordinates = [];
@@ -561,7 +499,6 @@ $('year-preview-toggle').addEventListener('click', () => startPreview('year'));
 function animate(timestamp) {
   requestAnimationFrame(animate);
   controls.update();
-  animateCityCamera(timestamp);
 
   if (previewState) {
     const timeFunction = previewState.type === 'year' ? yearPreviewFrame : previewFrame;
@@ -582,10 +519,7 @@ function animate(timestamp) {
     }
   }
 
-  updatePin($('city-pin'), illuminationRig.worldGeo(activeCity.latitude, activeCity.longitude, GLOBE_RADIUS * 1.034));
-  for (const marker of cityDots) {
-    updatePin(marker.element, illuminationRig.worldGeo(marker.city.latitude, marker.city.longitude, GLOBE_RADIUS * 1.035));
-  }
+  updatePin($('city-pin'), illuminationRig.worldGeo(BEIJING.latitude, BEIJING.longitude, GLOBE_RADIUS * 1.034));
   updatePin($('sun-pin'), currentSun.clone().multiplyScalar(GLOBE_RADIUS * 1.018));
   if (currentView !== 'orbit') renderer.render(scene, camera);
   if (currentView !== 'earth') orbitViewer.render();

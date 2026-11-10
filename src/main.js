@@ -184,9 +184,21 @@ const sunIndicator = new THREE.Mesh(
   new THREE.MeshBasicMaterial({ color: 0xffca87 })
 );
 scene.add(sunIndicator);
+const glowCanvas = document.createElement('canvas');
+glowCanvas.width = 128;
+glowCanvas.height = 128;
+const glowContext = glowCanvas.getContext('2d');
+const gradient = glowContext.createRadialGradient(64, 64, 0, 64, 64, 64);
+gradient.addColorStop(0, 'rgba(255,218,156,0.8)');
+gradient.addColorStop(0.25, 'rgba(255,183,101,0.28)');
+gradient.addColorStop(1, 'rgba(255,171,93,0)');
+glowContext.fillStyle = gradient;
+glowContext.fillRect(0, 0, 128, 128);
+const glowMap = new THREE.CanvasTexture(glowCanvas);
+glowMap.colorSpace = THREE.SRGBColorSpace;
 const sunAura = new THREE.Sprite(new THREE.SpriteMaterial({
-  color: 0xeeb874,
-  opacity: 0.22,
+  map: glowMap,
+  opacity: 0.67,
   transparent: true,
   depthWrite: false,
 }));

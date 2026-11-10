@@ -1,6 +1,7 @@
 import { build } from 'esbuild';
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import sharp from 'sharp';
 
 const outdir = '_site';
@@ -41,9 +42,14 @@ const generatedFile = Object.entries(result.metafile.outputs)
   .find(([, meta]) => meta.entryPoint === 'src/main.js')?.[0];
 if (!generatedFile) throw new Error('Earthlight entry bundle not found after build');
 
+const cssSource = await readFile('src/styles.css', 'utf8');
+const cssHash = createHash('sha256').update(cssSource).digest('hex').slice(0, 12);
+const cssFilename = 'styles-' + cssHash + '.css';
+await writeFile(path.join(outdir, 'assets', cssFilename), cssSource);
 const htmlSource = await readFile('index.html', 'utf8');
 const html = htmlSource
   .replace(/\s*<script type="importmap">[\s\S]*?<\/script>/, '')
+  .replace('<link rel="stylesheet" href="./src/styles.css" />', '<link rel="stylesheet" href="./assets/' + cssFilename + '" />')
   .replace(
     '<script type="module" src="./src/main.js"></script>',
     '<script type="module" src="./' + generatedFile.replace(/^_site\//, '') + '"></script>',
@@ -55,7 +61,7 @@ if (html.includes('src/main.js') || html.includes('importmap')) {
   throw new Error('CDN import map was not removed from built index.html');
 }
 await writeFile(path.join(outdir, 'index.html'), html);
-await copyFile('src/styles.css', path.join(outdir, 'src/styles.css'));
+// CSS ships with a content-hashed URL so a new deploy cannot reuse outdated styles.
 await copyFile('favicon.svg', path.join(outdir, 'favicon.svg'));
 await writeFile(path.join(outdir, '.nojekyll'), '');
 
@@ -96,4 +102,4 @@ for (const asset of textures) {
     console.log('Generated', width + 'x' + height, asset.type, resized.length + ' bytes');
   }
 }
-console.log('Built 2K/4K/8K locally hosted Earth maps and JavaScript:', generatedFile);
+console.log('Built 2K/4K/8K locally hosted Earth maps and JavaScript:', generatedFile, 'CSS:', cssFilename);

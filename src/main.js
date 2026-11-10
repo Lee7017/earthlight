@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { solarPosition, geographicVector, solarElevation, formatCoordinate } from './solar.js';
+import { solarPosition, geographicVector, formatCoordinate } from './solar.js';
 import { previewFrame } from './preview.js';
 
 const $ = (id) => document.getElementById(id);
@@ -74,7 +74,7 @@ scene.add(new THREE.Points(stars, new THREE.PointsMaterial({
 })));
 
 const sunUniform = { value: new THREE.Vector3(0, 0, 1) };
-const earthGeometry = new THREE.SphereGeometry(GLOBE_RADIUS, 128, 96);
+const earthGeometry = new THREE.SphereGeometry(GLOBE_RADIUS, 192, 128);
 const earthMaterial = new THREE.ShaderMaterial({
   uniforms: {
     dayMap: { value: null },
@@ -207,29 +207,57 @@ sunAura.scale.set(0.52, 0.52, 1);
 scene.add(sunAura);
 
 const loader = new THREE.TextureLoader();
-loader.setCrossOrigin('anonymous');
+const MAX_TEXTURE = renderer.capabilities.maxTextureSize || 2048;
+function preferredQuality() {
+  // A compressed JPEG expands into full RGBA texture memory on the GPU.
+  // Do not load 8K into phones or low-memory devices.
+  const memory = navigator.deviceMemory || 4;
+  if (window.innerWidth < 740 || memory <= 3 || MAX_TEXTURE < 4096) return 2048;
+  if (window.innerWidth >= 1300 && memory >= 8 && MAX_TEXTURE >= 8192) return 8192;
+  return 4096;
+}
+
 function loadMap(name) {
   return new Promise((resolve, reject) => {
     loader.load(textureBase + name, (texture) => {
       texture.colorSpace = THREE.SRGBColorSpace;
-      texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+      texture.anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy());
+      texture.minFilter = THREE.LinearMipmapLinearFilter;
+      texture.magFilter = THREE.LinearFilter;
       resolve(texture);
     }, undefined, reject);
   });
 }
-Promise.all([loadMap('earth_atmos_2048.jpg'), loadMap('earth_lights_2048.png')])
-  .then(([dayMap, nightMap]) => {
-    earthMaterial.uniforms.dayMap.value = dayMap;
-    earthMaterial.uniforms.nightMap.value = nightMap;
-    $('loading-overlay').classList.add('is-hidden');
-  })
-  .catch((error) => {
-    console.error('Earth texture load failed:', error);
-    $('loading-overlay').classList.add('is-hidden');
-    const errorElement = $('globe-error');
-    errorElement.hidden = false;
-    errorElement.textContent = '地球贴图加载失败。请检查网络连接并刷新页面。天文数据计算仍正常运行。';
-  });
+
+async function initTextures() {
+  const requested = preferredQuality();
+  const candidates = [...new Set([requested, 4096, 2048])]
+    .filter(size => size <= requested && size <= MAX_TEXTURE);
+  for (const size of candidates) {
+    let maps = [];
+    try {
+      maps = await Promise.all([
+        loadMap('day_' + size + '.jpg'),
+        loadMap('night_' + size + '.jpg'),
+      ]);
+      // Keep the day and night maps aligned, including along the terminator.
+      earthMaterial.uniforms.dayMap.value = maps[0];
+      earthMaterial.uniforms.nightMap.value = maps[1];
+      earthMaterial.needsUpdate = true;
+      $('map-quality').textContent = '01 / EARTH VIEW · ' + (size / 1024) + 'K MAP';
+      $('loading-overlay').classList.add('is-hidden');
+      return;
+    } catch (error) {
+      for (const map of maps) map?.dispose();
+      console.warn('Earth map quality ' + size + ' failed, falling back:', error);
+    }
+  }
+  $('loading-overlay').classList.add('is-hidden');
+  const errorElement = $('globe-error');
+  errorElement.hidden = false;
+  errorElement.textContent = '地球贴图暂时无法加载，请检查网络并刷新页面。时间和太阳位置仍在持续计算。';
+}
+initTextures();
 
 function updateTerminator(direction) {
   const arbitrary = Math.abs(direction.y) < 0.94
@@ -276,12 +304,6 @@ function updateAstronomy(now) {
 
   $('sun-latitude').textContent = formatCoordinate(subsolar.latitude, 'lat');
   $('sun-longitude').textContent = formatCoordinate(subsolar.longitude, 'lon');
-  const altitude = solarElevation(CHINA.latitude, CHINA.longitude, subsolar.latitude, subsolar.longitude);
-  $('solar-altitude').textContent = `${altitude >= 0 ? '+' : '−'}${Math.abs(altitude).toFixed(1)}°`;
-  $('horizon-sun').style.top = `${50 - (altitude / 90) * 45}%`;
-  const state = $('china-day-state');
-  state.className = 'day-state ' + (altitude >= 0 ? 'day' : 'night');
-  state.textContent = altitude >= 0 ? '☀ 白昼' : '☾ 黑夜';
   $('updated-at').textContent = `${previewState ? '预演时刻' : '太阳位置更新于'} ${new Intl.DateTimeFormat('zh-CN', {
     hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Shanghai', hour12: false
   }).format(now)}`;

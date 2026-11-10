@@ -28,6 +28,20 @@ try {
     return clock?.textContent && !clock.textContent.includes('--');
   }, { timeout: 25000 });
 
+  // This checks that actual image data loaded, not merely that a WebGL canvas exists.
+  await page.waitForFunction(
+    () => document.querySelector('#map-quality')?.textContent.includes('K MAP'),
+    { timeout: 30000 },
+  );
+  assert.equal(await page.$eval('#globe-error', el => el.hidden), true,
+    'Earth images should load without an error');
+  assert.equal(await page.$eval('.details-panel', el => el !== null).catch(() => false), false,
+    'The old right-hand solar and legend panels should be removed');
+  const mapLabel = await page.$eval('#map-quality', el => el.textContent);
+  console.log('Desktop texture loaded:', mapLabel);
+  const globeWidth = await page.$eval('#globe-stage', el => el.getBoundingClientRect().width);
+  assert.ok(globeWidth > 500, 'The Earth should have a larger desktop viewport');
+
   const canvas = await page.$('#globe-mount canvas');
   assert.ok(canvas, 'Three.js should create a globe canvas');
 
@@ -53,6 +67,15 @@ try {
   assert.equal(await page.$eval('#preview-overlay', el => el.hidden), true);
   assert.equal(await page.$eval('#clock-mode-label', el => el.textContent), '当前时刻');
   console.log('Preview exits to live time: PASS');
+  // Mobile should use lower GPU memory without sacrificing the 2K asset tier.
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(
+    () => document.querySelector('#map-quality')?.textContent.includes('2K MAP'),
+    { timeout: 30000 },
+  );
+  assert.equal(await page.$eval('#globe-error', el => el.hidden), true);
+  console.log('Mobile texture loaded:', await page.$eval('#map-quality', el => el.textContent));
   if (pageErrors.length) throw new Error('Browser JS errors:\n' + pageErrors.join('\n'));
   console.log('PASS: browser button, simulated time, manual exit and globe canvas');
 } catch (err) {

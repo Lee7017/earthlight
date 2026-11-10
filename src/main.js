@@ -345,7 +345,18 @@ async function initTextures() {
       earthMaterial.uniforms.dayMap.value = maps[0];
       earthMaterial.uniforms.nightMap.value = maps[1];
       earthMaterial.needsUpdate = true;
-      orbitViewer.setTextures(maps[0], maps[1]);
+      // A second WebGL context needs its own GPU texture upload.
+      // Prefer 2K for the miniature Earth to avoid doubling 4K/8K VRAM use.
+      if (size === 2048) {
+        orbitViewer.setTextures(maps[0], maps[1]);
+      } else {
+        Promise.all([loadMap('day_2048.jpg'), loadMap('night_2048.jpg')])
+          .then(([day, night]) => orbitViewer.setTextures(day, night))
+          .catch(error => {
+            console.warn('2K orbit textures unavailable, reusing Earth maps:', error);
+            orbitViewer.setTextures(maps[0], maps[1]);
+          });
+      }
       $('map-quality').textContent = '01 / EARTH VIEW · ' + (size / 1024) + 'K MAP';
       $('loading-overlay').classList.add('is-hidden');
       return;

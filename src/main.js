@@ -306,7 +306,7 @@ function installTexturePair(pair) {
     orbitTexturePair = pair;
     orbitViewer.setTextures(pair.day, pair.night);
   }
-  earthMaterial.needsUpdate = true;
+  // Switching sampler uniforms requires no shader recompilation.
 
   // Dispose superseded GPU resources only AFTER neither WebGL scene uses them.
   for (const oldPair of new Set([previousEarth, previousOrbit])) {
@@ -318,6 +318,7 @@ function installTexturePair(pair) {
 
   QUALITY_SEQUENCE.push(pair.width);
   stage.dataset.textureWidth = String(pair.width);
+  stage.dataset.orbitTextureWidth = String(orbitTexturePair.width);
   stage.dataset.textureHistory = QUALITY_SEQUENCE.join(',');
   stage.dataset.textureStage = pair.width === 512 ? 'preview' : 'enhanced';
   $('map-quality').textContent = '01 / EARTH VIEW · ' +

@@ -45,6 +45,42 @@ try {
   const canvas = await page.$('#globe-mount canvas');
   assert.ok(canvas, 'Three.js should create a globe canvas');
 
+  // Real browser test of six geographic camera targets, including both hemispheres.
+  const cityChecks = [
+    ['beijing', '北京'],
+    ['xiongan', '雄安'],
+    ['xian', '西安'],
+    ['urumqi', '乌鲁木齐'],
+    ['london', '伦敦'],
+    ['silicon-valley', '硅谷'],
+  ];
+  assert.equal(await page.$eval('.city-chip', els => els.length), 6);
+  assert.equal(await page.$eval('#globe-stage', el => el.dataset.focusCity), 'beijing');
+  for (const [id, name] of cityChecks) {
+    await page.click('.city-chip[data-city="' + id + '"]');
+    await page.waitForFunction(
+      (expectedId) => document.querySelector('#globe-stage')?.dataset.focusCity === expectedId,
+      { timeout: 3000 },
+      id,
+    );
+    await page.waitForFunction(
+      (expectedId) => {
+        const dot = document.querySelector('.map-city-dot[data-city="' + expectedId + '"]');
+        const marker = document.querySelector('#city-pin');
+        return dot?.classList.contains('is-selected') && parseFloat(marker.style.opacity || '0') > .8;
+      },
+      { timeout: 3500 },
+      id,
+    );
+    assert.equal(await page.$eval('#focused-city-label', el => el.textContent.includes(name)), true);
+    assert.equal(await page.$eval('.city-chip[data-city="' + id + '"]', el => el.getAttribute('aria-pressed')), 'true');
+  }
+  console.log('Six city presets navigate and show focused markers: PASS');
+
+  await page.click('#reset-view');
+  assert.equal(await page.$eval('#globe-stage', el => el.dataset.focusCity), 'beijing');
+  console.log('Default Beijing camera reset: PASS');
+
   await page.click('#preview-toggle');
   await page.waitForFunction(
     () => document.querySelector('#preview-button-label')?.textContent === '退出预演',
@@ -76,6 +112,12 @@ try {
   );
   assert.equal(await page.$eval('#globe-error', el => el.hidden), true);
   console.log('Mobile texture loaded:', await page.$eval('#map-quality', el => el.textContent));
+  assert.equal(await page.$eval('.city-chip', els => els.length), 6);
+  await page.click('.city-chip[data-city="london"]');
+  await page.waitForFunction(() => document.querySelector('#globe-stage')?.dataset.focusCity === 'london',
+    { timeout: 3000 });
+  assert.equal(await page.$eval('.city-chip[data-city="london"]', el => el.getAttribute('aria-pressed')), 'true');
+  console.log('Mobile city picker: PASS');
   if (pageErrors.length) throw new Error('Browser JS errors:\n' + pageErrors.join('\n'));
   console.log('PASS: browser button, simulated time, manual exit and globe canvas');
 } catch (err) {

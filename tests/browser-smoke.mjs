@@ -1,5 +1,6 @@
 import puppeteer from 'puppeteer-core';
 import assert from 'node:assert/strict';
+import { mkdir } from 'node:fs/promises';
 
 const origin = process.env.SMOKE_URL || 'http://127.0.0.1:8000';
 const browser = await puppeteer.launch({
@@ -89,6 +90,10 @@ try {
     console.log('Desktop layout fits without clipping:', width, 'x', height,
       'globe stage', Math.round(layout.stage.width), 'x', Math.round(layout.stage.height));
   }
+  await mkdir('tests/screenshots', { recursive: true });
+  await page.setViewport({ width: 1568, height: 890, deviceScaleFactor: 1 });
+  await new Promise(resolve => setTimeout(resolve, 350));
+  await page.screenshot({ path: 'tests/screenshots/desktop-1568.png', fullPage: true });
   await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
 
   const canvas = await page.$('#globe-mount canvas');
@@ -125,7 +130,7 @@ try {
   assert.equal(await page.$eval('#preview-heading', el => el.textContent), '365D / 12 MIN · SEASONS');
   await page.click('#year-preview-toggle');
   await page.waitForFunction(() => document.body.dataset.timeMode === 'live', { timeout: 5000 });
-  assert.equal(await page.$eval('#year-preview-label', el => el.textContent), '365 天 · 四季预演');
+  assert.equal(await page.$eval('#year-preview-label', el => el.textContent), '四季预演 · 12 分钟');
   console.log('Seasonal year playback, synchronized orbit and return to live: PASS');
 
   // Real browser test of six geographic camera targets, including both hemispheres.
@@ -220,6 +225,71 @@ try {
     { timeout: 3000 });
   assert.equal(await page.$eval('.city-chip[data-city="london"]', el => el.getAttribute('aria-pressed')), 'true');
   console.log('Mobile city picker: PASS');
+
+  // Responsive layout regression test with actual mobile widths, not only
+  // Puppeteer's page click emulation.
+  for (const width of [320, 360, 375, 390, 430, 760]) {
+    await page.setViewport({ width, height: width <= 430 ? 844 : 932, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    await new Promise(resolve => setTimeout(resolve, 280));
+    const geometry = await page.evaluate(() => {
+      const rect = selector => {
+        const r = document.querySelector(selector).getBoundingClientRect();
+        return { x:r.x, top:r.top, right:r.right, bottom:r.bottom, width:r.width, height:r.height };
+      };
+      return {
+        viewport: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+        header: rect('.topbar'),
+        cities: rect('.city-presets'),
+        actions: rect('.globe-bottom'),
+        earth: rect('#globe-stage'),
+        orbit: rect('#orbit-stage'),
+        footer: rect('.footer'),
+        buttons: [...document.querySelectorAll('.viewer-actions .view-button')].map(el => {
+          const r=el.getBoundingClientRect();return {id:el.id,x:r.left,right:r.right,width:r.width,height:r.height};
+        }),
+        cityChips: [...document.querySelectorAll('.city-chip')].map(el => {
+          const r=el.getBoundingClientRect();return {right:r.right,width:r.width};
+        }),
+      };
+    });
+    assert.ok(geometry.scrollWidth <= geometry.viewport + 2,
+      'Mobile horizontal overflow: ' + JSON.stringify(geometry));
+    assert.ok(geometry.cities.bottom <= geometry.actions.top + 2,
+      'Mobile city row and playback controls overlap: ' + JSON.stringify(geometry));
+    assert.ok(geometry.actions.bottom <= geometry.earth.top + 2,
+      'Mobile playback buttons should precede the Earth: ' + JSON.stringify(geometry));
+    assert.ok(geometry.earth.bottom <= geometry.orbit.top + 2,
+      'Mobile Earth and orbit panels must stack: ' + JSON.stringify(geometry));
+    assert.ok(geometry.earth.height >= 290 && geometry.orbit.height >= 340,
+      'Mobile visual panels too short: ' + JSON.stringify(geometry));
+    for (const button of geometry.buttons) {
+      assert.ok(button.height >= 40 && button.width >= 105,
+        'Mobile touch control too small: ' + JSON.stringify(geometry));
+      assert.ok(button.x >= -1 && button.right <= geometry.viewport + 2,
+        'Mobile button outside viewport: ' + JSON.stringify(geometry));
+    }
+    for (const chip of geometry.cityChips) {
+      assert.ok(chip.right <= geometry.viewport + 2, 'Mobile city chip outside viewport');
+    }
+    console.log('Mobile layout verified:', width + 'px', 'Earth', Math.round(geometry.earth.height),
+      'Orbit', Math.round(geometry.orbit.height), 'all four controls reachable');
+  }
+
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  await page.click('.mode-button[data-view="orbit"]');
+  assert.equal(await page.$eval('#visualization-layout', el => el.dataset.view), 'orbit');
+  await page.click('.mode-button[data-view="dual"]');
+  assert.equal(await page.$eval('#visualization-layout', el => el.dataset.view), 'dual');
+  await page.click('#year-preview-toggle');
+  await page.waitForFunction(() => document.body.dataset.timeMode === 'year', { timeout: 5000 });
+  await page.waitForFunction(() => document.querySelector('#preview-overlay')?.hidden === false, { timeout: 5000 });
+  await page.click('#year-preview-toggle');
+  await page.waitForFunction(() => document.body.dataset.timeMode === 'live', { timeout: 5000 });
+  await page.click('#reset-view');
+  await new Promise(resolve => setTimeout(resolve, 250));
+  await page.screenshot({ path: 'tests/screenshots/mobile-390.png', fullPage: true });
+  console.log('Mobile view switching, seasonal preview and screenshot: PASS');
   if (pageErrors.length) throw new Error('Browser JS errors:\n' + pageErrors.join('\n'));
   console.log('PASS: browser button, simulated time, manual exit and globe canvas');
 } catch (err) {

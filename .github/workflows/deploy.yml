@@ -52,6 +52,15 @@ jobs:
           sleep 2
           node tests/browser-smoke.mjs
 
+      - name: Save desktop and mobile layout screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: responsive-layout-screenshots
+          path: tests/screenshots/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v5
 

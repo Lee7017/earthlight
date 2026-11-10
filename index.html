@@ -28,7 +28,7 @@
         <span class="brand-type"><strong>EARTHLIGHT</strong><small>SOLAR OBSERVATORY</small></span>
       </a>
       <div class="header-right">
-        <span class="live-pill"><span class="live-dot"></span><span>LIVE <span class="live-word">· REAL TIME</span></span></span>
+        <span class="live-pill" id="header-status"><span class="live-dot"></span><span id="header-status-label">LIVE <span class="live-word">· REAL TIME</span></span></span>
         <a class="repo-link" href="https://github.com/Lee7017/earthlight" target="_blank" rel="noopener noreferrer" aria-label="查看 GitHub 源码">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .9a11.1 11.1 0 0 0-3.51 21.63c.55.1.76-.24.76-.54v-2.12c-3.09.67-3.74-1.31-3.74-1.31-.5-1.28-1.22-1.62-1.22-1.62-1.01-.69.07-.68.07-.68 1.12.08 1.71 1.15 1.71 1.15.99 1.69 2.6 1.2 3.24.92.1-.72.39-1.2.7-1.48-2.47-.28-5.06-1.24-5.06-5.48 0-1.21.43-2.2 1.14-2.97-.11-.28-.49-1.41.11-2.93 0 0 .93-.3 3.05 1.13a10.6 10.6 0 0 1 5.56 0c2.12-1.44 3.05-1.13 3.05-1.13.6 1.52.22 2.65.11 2.93.71.77 1.14 1.76 1.14 2.97 0 4.25-2.6 5.19-5.08 5.47.4.35.76 1.02.76 2.06v3.06c0 .3.2.65.77.54A11.1 11.1 0 0 0 12 .9Z"/></svg>
           <span>源代码</span>
@@ -43,7 +43,7 @@
         <p class="hero-description">从太空看地球，让阳光告诉你，现在的世界在哪里醒来，在哪里入眠。</p>
 
         <div class="time-group">
-          <div class="group-heading"><span class="tiny-circle"></span> 当前时刻 <span class="minor-tag">UTC +08</span></div>
+          <div class="group-heading"><span class="tiny-circle"></span> <span id="clock-mode-label">当前时刻</span> <span class="minor-tag">UTC +08</span></div>
           <div class="time-display" id="beijing-time" aria-live="off">--:--<span>:--</span></div>
           <div class="date-display" id="beijing-date">正在同步时间…</div>
           <div class="utc-row"><span>UTC 协调世界时</span><strong id="utc-time">--:--:--</strong></div>
@@ -70,7 +70,7 @@
       <section class="globe-panel" aria-label="交互式三维地球">
         <div class="globe-top">
           <span class="globe-index">01 / EARTH VIEW</span>
-          <span class="globe-mode"><span class="mode-dot"></span> LIVE ILLUMINATION</span>
+          <span class="globe-mode" id="globe-mode"><span class="mode-dot"></span><span id="globe-mode-label">LIVE ILLUMINATION</span></span>
         </div>
         <div class="globe-stage" id="globe-stage">
           <div class="orbital-halo halo-a"></div>
@@ -79,6 +79,11 @@
           <div class="loading-overlay" id="loading-overlay"><span class="loading-ring"></span><span>正在构建地球…</span></div>
           <div class="globe-pin china-pin" id="china-pin"><span class="pin-node"></span><span class="pin-text">中国 · 初始中心</span></div>
           <div class="globe-pin sun-pin" id="sun-pin"><span class="pin-node"></span><span class="pin-text">太阳直射点</span></div>
+          <div class="preview-overlay" id="preview-overlay" hidden aria-label="24 小时预演进度">
+            <div class="preview-overlay-top"><span>24H / TIME-LAPSE</span><strong id="preview-elapsed">+00:00 / +24:00</strong></div>
+            <div class="preview-track" id="preview-track" role="progressbar" aria-label="预演进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="preview-track-fill"></span></div>
+            <div class="preview-overlay-bottom"><span>从当前时刻开始</span><span>未来 24 小时</span></div>
+          </div>
           <div class="view-annotation top-left">N<span class="annotation-line"></span> 90°</div>
           <div class="view-annotation bottom-right">3D / WGS84 <span class="micro-cross">✳</span></div>
         </div>
@@ -89,6 +94,9 @@
             <span>滚轮缩放</span>
           </div>
           <div class="viewer-actions">
+            <button id="preview-toggle" class="view-button preview-button" type="button" aria-pressed="false" title="将未来 24 小时的昼夜变化压缩到 24 秒预演">
+              <span id="preview-icon" class="preview-play-icon" aria-hidden="true">▶</span><span id="preview-button-label">24 小时预演</span>
+            </button>
             <button id="terminator-toggle" class="view-button selected" type="button" aria-pressed="true" title="显示或隐藏晨昏线">
               <span class="button-circle boundary-symbol"></span>晨昏线
             </button>

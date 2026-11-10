@@ -4,6 +4,7 @@ import { solarPosition, geographicVector, formatCoordinate } from './solar.js';
 import { previewFrame, yearPreviewFrame, TROPICAL_YEAR_DAYS } from './preview.js';
 import { createOrbitViewer } from './orbitViewer.js';
 import { createIlluminationRig } from './illuminationScene.js';
+import { preferredTextureWidth, textureLoadingStages, ORBIT_TEXTURE_WIDTH } from './textureQuality.js';
 import { BEIJING } from './cities.js';
 
 const $ = (id) => document.getElementById(id);
@@ -250,13 +251,19 @@ sunAura.visible = false;
 
 const loader = new THREE.TextureLoader();
 const MAX_TEXTURE = renderer.capabilities.maxTextureSize || 2048;
+const QUALITY_SEQUENCE = [];
+let earthTexturePair = null;
+let orbitTexturePair = null;
+
 function preferredQuality() {
-  // A compressed JPEG expands into full RGBA texture memory on the GPU.
-  // Do not load 8K into phones or low-memory devices.
-  const memory = navigator.deviceMemory || 4;
-  if (window.innerWidth < 740 || memory <= 3 || MAX_TEXTURE < 4096) return 2048;
-  if (window.innerWidth >= 1300 && memory >= 8 && MAX_TEXTURE >= 8192) return 8192;
-  return 4096;
+  const connection = navigator.connection || {};
+  return preferredTextureWidth({
+    viewportWidth: window.innerWidth,
+    deviceMemory: navigator.deviceMemory || 4,
+    maxTextureSize: MAX_TEXTURE,
+    saveData: connection.saveData === true,
+    effectiveType: connection.effectiveType || '',
+  });
 }
 
 function loadMap(name) {
@@ -271,41 +278,77 @@ function loadMap(name) {
   });
 }
 
-async function initTextures() {
-  const requested = preferredQuality();
-  const candidates = [...new Set([requested, 4096, 2048])]
-    .filter(size => size <= requested && size <= MAX_TEXTURE);
-  for (const size of candidates) {
-    let maps = [];
-    try {
-      maps = await Promise.all([
-        loadMap('day_' + size + '.jpg'),
-        loadMap('night_' + size + '.jpg'),
-      ]);
-      // Keep the day and night maps aligned, including along the terminator.
-      earthMaterial.uniforms.dayMap.value = maps[0];
-      earthMaterial.uniforms.nightMap.value = maps[1];
-      earthMaterial.needsUpdate = true;
-      // A second WebGL context needs its own GPU texture upload.
-      // Prefer 2K for the miniature Earth to avoid doubling 4K/8K VRAM use.
-      if (size === 2048) {
-        orbitViewer.setTextures(maps[0], maps[1]);
-      } else {
-        Promise.all([loadMap('day_2048.jpg'), loadMap('night_2048.jpg')])
-          .then(([day, night]) => orbitViewer.setTextures(day, night))
-          .catch(error => {
-            console.warn('2K orbit textures unavailable, reusing Earth maps:', error);
-            orbitViewer.setTextures(maps[0], maps[1]);
-          });
-      }
-      $('map-quality').textContent = '01 / EARTH VIEW · ' + (size / 1024) + 'K MAP';
-      $('loading-overlay').classList.add('is-hidden');
-      return;
-    } catch (error) {
-      for (const map of maps) map?.dispose();
-      console.warn('Earth map quality ' + size + ' failed, falling back:', error);
+async function loadTexturePair(width) {
+  // Do not let one successfully loaded texture leak if its pair fails.
+  const outcomes = await Promise.allSettled([
+    loadMap('day_' + width + '.jpg'),
+    loadMap('night_' + width + '.jpg'),
+  ]);
+  if (outcomes.some(result => result.status === 'rejected')) {
+    for (const result of outcomes) {
+      if (result.status === 'fulfilled') result.value.dispose();
+    }
+    throw outcomes.find(result => result.status === 'rejected').reason;
+  }
+  return { width, day: outcomes[0].value, night: outcomes[1].value };
+}
+
+function installTexturePair(pair) {
+  const previousEarth = earthTexturePair;
+  const previousOrbit = orbitTexturePair;
+  earthTexturePair = pair;
+  earthMaterial.uniforms.dayMap.value = pair.day;
+  earthMaterial.uniforms.nightMap.value = pair.night;
+
+  // The smaller heliocentric Earth never needs 4K/8K texture uploads.
+  // Share the preview pair initially, then keep its 2K upgrade.
+  if (pair.width <= ORBIT_TEXTURE_WIDTH || !orbitTexturePair) {
+    orbitTexturePair = pair;
+    orbitViewer.setTextures(pair.day, pair.night);
+  }
+  earthMaterial.needsUpdate = true;
+
+  // Dispose superseded GPU resources only AFTER neither WebGL scene uses them.
+  for (const oldPair of new Set([previousEarth, previousOrbit])) {
+    if (oldPair && oldPair !== earthTexturePair && oldPair !== orbitTexturePair) {
+      oldPair.day.dispose();
+      oldPair.night.dispose();
     }
   }
+
+  QUALITY_SEQUENCE.push(pair.width);
+  stage.dataset.textureWidth = String(pair.width);
+  stage.dataset.textureHistory = QUALITY_SEQUENCE.join(',');
+  stage.dataset.textureStage = pair.width === 512 ? 'preview' : 'enhanced';
+  $('map-quality').textContent = '01 / EARTH VIEW · ' +
+    (pair.width === 512 ? '512PX' : (pair.width / 1024) + 'K') + ' MAP';
+  $('loading-overlay').classList.add('is-hidden');
+}
+
+async function initTextures() {
+  const requested = preferredQuality();
+  const stages = textureLoadingStages(requested, MAX_TEXTURE);
+  stage.dataset.textureStage = 'loading';
+
+  for (const width of stages) {
+    try {
+      const pair = await loadTexturePair(width);
+      installTexturePair(pair);
+
+      // Give the browser a chance to paint the lightweight globe before
+      // starting the next, considerably larger, background downloads.
+      await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
+    } catch (error) {
+      console.warn('Earth texture upgrade to ' + width + 'px unavailable:', error);
+    }
+  }
+
+  if (earthTexturePair) {
+    stage.dataset.textureStage = 'ready';
+    stage.dataset.textureTarget = String(requested);
+    return;
+  }
+  stage.dataset.textureStage = 'failed';
   $('loading-overlay').classList.add('is-hidden');
   const errorElement = $('globe-error');
   errorElement.hidden = false;

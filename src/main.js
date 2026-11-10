@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { solarPosition, geographicVector, formatCoordinate } from './solar.js';
 import { previewFrame, yearPreviewFrame, TROPICAL_YEAR_DAYS } from './preview.js';
 import { createOrbitViewer } from './orbitViewer.js';
-import { createIlluminationRig } from './illuminationScene.js';
+import { createIlluminationRig, SUNLIGHT_COLOR } from './illuminationScene.js';
 import { preferredTextureWidth, textureLoadingStages, ORBIT_TEXTURE_WIDTH } from './textureQuality.js';
 import { BEIJING } from './cities.js';
 
@@ -197,9 +197,9 @@ scene.add(atmosphere);
 const terminatorPoints = new Array(360).fill(null).map(() => new THREE.Vector3());
 const terminatorGeometry = new THREE.BufferGeometry().setFromPoints(terminatorPoints);
 const terminator = new THREE.LineLoop(terminatorGeometry, new THREE.LineBasicMaterial({
-  color: 0xb3f6e6,
+  color: 0xffffff,
   transparent: true,
-  opacity: 0.76,
+  opacity: 0.86,
   depthTest: true,
   depthWrite: false,
 }));
@@ -216,7 +216,7 @@ $('terminator-toggle').addEventListener('click', () => {
 
 const subsolarMarker = new THREE.Mesh(
   new THREE.SphereGeometry(0.03, 16, 12),
-  new THREE.MeshBasicMaterial({ color: 0xffd39b })
+  new THREE.MeshBasicMaterial({ color: SUNLIGHT_COLOR })
 );
 scene.add(subsolarMarker);
 const sunIndicator = new THREE.Mesh(
@@ -411,6 +411,12 @@ function updateAstronomy(now) {
   stage.dataset.tropicsParent = illuminationRig.belt.parent?.name || 'none';
   stage.dataset.earthSurfaceParent = illuminationRig.spinGroup.name;
   stage.dataset.sunlightRayCount = String(scene.children.filter(object => object.name === 'direct-sunlight-arrow' || object.name === 'parallel-sunlight-ray').length);
+  // Validate that both representations of sunlight use the same exact color.
+  stage.dataset.horizontalCircleColor = '#' + illuminationRig.horizontalRing.material.color.getHexString();
+  stage.dataset.directRayColor = '#' + illuminationRig.centerRay.line.material.color.getHexString();
+  stage.dataset.tropicsColor = '#' + illuminationRig.belt.material.color.getHexString();
+  stage.dataset.axisColor = '#' + illuminationRig.rotationAxis.material.color.getHexString();
+  stage.dataset.terminatorColor = '#' + terminator.material.color.getHexString();
 
   $('sun-latitude').textContent = formatCoordinate(subsolar.latitude, 'lat');
   $('sun-longitude').textContent = formatCoordinate(subsolar.longitude, 'lon');

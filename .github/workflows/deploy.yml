@@ -28,6 +28,9 @@ jobs:
       - name: Run astronomical geometry tests
         run: node --test src/solar.test.js
 
+      - name: Validate browser JavaScript syntax
+        run: node --check src/main.js
+
       - name: Prepare static site
         run: |
           mkdir -p _site

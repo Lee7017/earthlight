@@ -68,6 +68,11 @@
       <section class="globe-panel" aria-label="交互式三维地球">
         <div class="globe-top">
           <span class="globe-index" id="map-quality">01 / EARTH VIEW · LOADING</span>
+          <div class="view-switch" role="group" aria-label="选择地球观察视角">
+            <button class="mode-button" type="button" data-view="earth" aria-pressed="false">地表</button>
+            <button class="mode-button" type="button" data-view="orbit" aria-pressed="false">轨道</button>
+            <button class="mode-button is-active" type="button" data-view="dual" aria-pressed="true">双视图</button>
+          </div>
           <span class="globe-mode" id="globe-mode"><span class="mode-dot"></span><span id="globe-mode-label">LIVE ILLUMINATION</span></span>
         </div>
         <nav class="city-presets" aria-label="城市视角快捷切换">
@@ -79,6 +84,7 @@
           <button class="city-chip" type="button" data-city="london" aria-pressed="false">伦敦</button>
           <button class="city-chip" type="button" data-city="silicon-valley" aria-pressed="false" title="以加州山景城作为硅谷代表位置">硅谷</button>
         </nav>
+        <div class="visualization-layout is-dual" id="visualization-layout" data-view="dual">
         <div class="globe-stage" id="globe-stage">
           <div class="orbital-halo halo-a"></div>
           <div class="orbital-halo halo-b"></div>
@@ -87,12 +93,28 @@
           <div class="globe-pin focused-city-pin" id="city-pin"><span class="pin-node"></span><span class="pin-text" id="focused-city-label">中国 · 北京</span></div>
           <div class="globe-pin sun-pin" id="sun-pin"><span class="pin-node"></span><span class="pin-text">太阳直射点</span></div>
           <div class="preview-overlay" id="preview-overlay" hidden aria-label="24 小时预演进度">
-            <div class="preview-overlay-top"><span>24H / TIME-LAPSE</span><strong id="preview-elapsed">+00:00 / +24:00</strong></div>
+            <div class="preview-overlay-top"><span id="preview-heading">24H / TIME-LAPSE</span><strong id="preview-elapsed">+00:00 / +24:00</strong></div>
             <div class="preview-track" id="preview-track" role="progressbar" aria-label="预演进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="preview-track-fill"></span></div>
-            <div class="preview-overlay-bottom"><span>从当前时刻开始</span><span>未来 24 小时</span></div>
+            <div class="preview-overlay-bottom"><span id="preview-start-label">从当前时刻开始</span><span id="preview-end-label">未来 24 小时</span></div>
           </div>
           <div class="view-annotation top-left">N<span class="annotation-line"></span> 90°</div>
           <div class="view-annotation bottom-right">3D / WGS84 <span class="micro-cross">✳</span></div>
+        </div>
+        <section class="orbit-stage" id="orbit-stage" aria-label="太阳固定于中心，地球公转、自转及地轴倾斜的三维轨道图">
+          <div class="orbit-mount" id="orbit-mount"></div>
+          <div class="orbit-header"><span>02 / HELIOCENTRIC VIEW</span><span class="orbit-live-dot"></span></div>
+          <div class="orbit-sun-label">☀ 太阳固定在中心</div>
+          <span class="season-label" id="season-march">春分 · 3月</span>
+          <span class="season-label" id="season-june">夏至 · 6月</span>
+          <span class="season-label" id="season-september">秋分 · 9月</span>
+          <span class="season-label" id="season-december">冬至 · 12月</span>
+          <span class="orbit-earth-label" id="orbit-earth-label">地球 · 公转中</span>
+          <div class="orbit-readout">
+            <div><span>模拟日期 · UTC</span><strong id="orbit-date">—</strong></div>
+            <div><span>地轴倾角</span><strong id="orbit-tilt">23.44°</strong></div>
+          </div>
+          <div class="orbit-caption">地球同时自转与公转 · 地轴方向基本保持不变<br />球体大小经过放大，日地尺度不按比例</div>
+        </section>
         </div>
         <div class="globe-bottom">
           <div class="controls-hint">
@@ -103,6 +125,9 @@
           <div class="viewer-actions">
             <button id="preview-toggle" class="view-button preview-button" type="button" aria-pressed="false" title="将未来 24 小时的昼夜变化压缩到 24 秒预演">
               <span id="preview-icon" class="preview-play-icon" aria-hidden="true">▶</span><span id="preview-button-label">24 小时预演</span>
+            </button>
+            <button id="year-preview-toggle" class="view-button year-preview-button" type="button" aria-pressed="false" title="将一个回归年的公转、自转及四季晨昏线变化压缩到 36 秒">
+              <span id="year-preview-icon" aria-hidden="true">◉</span><span id="year-preview-label">365 天 · 四季预演</span>
             </button>
             <button id="terminator-toggle" class="view-button selected" type="button" aria-pressed="true" title="显示或隐藏晨昏线">
               <span class="button-circle boundary-symbol"></span>晨昏线

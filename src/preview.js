@@ -26,7 +26,7 @@ export function previewFrame(realStartEpochMs, animationStartMs, animationNowMs,
  */
 export const TROPICAL_YEAR_DAYS = 365.2422;
 export const YEAR_PREVIEW_SPAN_MS = TROPICAL_YEAR_DAYS * 86400000;
-export const YEAR_PREVIEW_DURATION_MS = 36 * 1000;
+export const YEAR_PREVIEW_DURATION_MS = 720 * 1000; // 12 minutes; ~1.97s per solar day.
 
 export function yearPreviewFrame(realStartEpochMs, animationStartMs, animationNowMs,
   durationMs = YEAR_PREVIEW_DURATION_MS) {

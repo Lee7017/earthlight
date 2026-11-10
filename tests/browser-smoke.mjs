@@ -44,7 +44,9 @@ try {
   const mapLabel = await page.$eval('#map-quality', el => el.textContent);
   console.log('Desktop texture loaded:', mapLabel);
   const globeWidth = await page.$eval('#globe-stage', el => el.getBoundingClientRect().width);
-  assert.ok(globeWidth > 500, 'The Earth should have a larger desktop viewport');
+  assert.ok(globeWidth > 300, 'The shared Earth view should remain legible beside the orbit');
+  assert.ok(await page.$('#orbit-mount canvas'), 'Heliocentric orbit must render its own interactive 3D canvas');
+  assert.equal(await page.$eval('#visualization-layout', el => el.dataset.view), 'dual');
 
   // Visual layout regression: the screenshot issue was a stale stylesheet
   // and a globe viewport allowed to exceed the available desktop height.
@@ -91,6 +93,38 @@ try {
 
   const canvas = await page.$('#globe-mount canvas');
   assert.ok(canvas, 'Three.js should create a globe canvas');
+
+  // Both displays share UTC time, while the Sun stays fixed at the center of
+  // the second scene. Switching modes must not reset the global time.
+  for (const mode of ['orbit', 'earth', 'dual']) {
+    await page.click('.mode-button[data-view="' + mode + '"]');
+    assert.equal(await page.$eval('#visualization-layout', el => el.dataset.view), mode);
+    assert.equal(await page.$eval('.mode-button[data-view="' + mode + '"]', el => el.getAttribute('aria-pressed')), 'true');
+  }
+  console.log('Earth, orbit and synchronized dual modes: PASS');
+  const orbitBefore = await page.$eval('#orbit-stage', el => ({
+    longitude: Number(el.dataset.orbitLongitude), spin: Number(el.dataset.earthRotation),
+    time: el.dataset.simulationUtc,
+  }));
+  assert.ok(Number.isFinite(orbitBefore.longitude) && Number.isFinite(orbitBefore.spin));
+
+  await page.click('#year-preview-toggle');
+  await page.waitForFunction(() => document.body.dataset.timeMode === 'year', { timeout: 5000 });
+  await page.waitForFunction(() => Number(document.querySelector('#preview-track')?.getAttribute('aria-valuenow')) >= 3,
+    { timeout: 9000 });
+  const orbitDuring = await page.$eval('#orbit-stage', el => ({
+    longitude: Number(el.dataset.orbitLongitude),
+    time: el.dataset.simulationUtc,
+  }));
+  assert.ok(Math.abs(orbitDuring.longitude - orbitBefore.longitude) > .02,
+    'Earth must physically move along its orbit during seasonal playback');
+  assert.ok(Date.parse(orbitDuring.time) > Date.parse(orbitBefore.time) + 86400000,
+    'Seasonal preview must advance simulated UTC date');
+  assert.equal(await page.$eval('#preview-heading', el => el.textContent), '365D / SEASONS');
+  await page.click('#year-preview-toggle');
+  await page.waitForFunction(() => document.body.dataset.timeMode === 'live', { timeout: 5000 });
+  assert.equal(await page.$eval('#year-preview-label', el => el.textContent), '365 天 · 四季预演');
+  console.log('Seasonal year playback, synchronized orbit and return to live: PASS');
 
   // Real browser test of six geographic camera targets, including both hemispheres.
   const cityChecks = [

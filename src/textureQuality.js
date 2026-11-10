@@ -15,6 +15,7 @@ export function preferredTextureWidth({
   if (saveData || effectiveType === 'slow-2g' || effectiveType === '2g') {
     return PREVIEW_TEXTURE_WIDTH;
   }
+  if (maxTextureSize < ORBIT_TEXTURE_WIDTH) return PREVIEW_TEXTURE_WIDTH;
   if (viewportWidth < 740 || deviceMemory <= 3 ||
       maxTextureSize < 4096 || effectiveType === '3g') return ORBIT_TEXTURE_WIDTH;
   if (viewportWidth >= 1300 && deviceMemory >= 8 && maxTextureSize >= 8192) return 8192;

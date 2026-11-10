@@ -6,7 +6,7 @@ import { previewFrame } from './preview.js';
 const $ = (id) => document.getElementById(id);
 const GLOBE_RADIUS = 2;
 const CHINA = { latitude: 35, longitude: 105 };
-const textureBase = 'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r180/examples/textures/planets/';
+const textureBase = './textures/'; // Built site includes both textures locally.
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 120);

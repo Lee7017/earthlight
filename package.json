@@ -1,0 +1,14 @@
+{
+  "name": "earthlight",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Real-time 3D Earth and Sun visualization with day-night terminator, purely in the browser.",
+  "scripts": {
+    "test": "node --test src/solar.test.js",
+    "start": "python3 -m http.server 8000"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

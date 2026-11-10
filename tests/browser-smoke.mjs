@@ -183,7 +183,7 @@ try {
 
   await page.click('#preview-toggle');
   await page.waitForFunction(
-    () => document.querySelector('#preview-button-label')?.textContent === '退出预演',
+    () => document.querySelector('#preview-button-label')?.textContent === '退出 24 小时预演',
     { timeout: 5000 },
   );
   assert.equal(await page.$eval('#preview-overlay', el => el.hidden), false);

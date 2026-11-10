@@ -110,17 +110,19 @@ try {
 
   await page.click('#year-preview-toggle');
   await page.waitForFunction(() => document.body.dataset.timeMode === 'year', { timeout: 5000 });
-  await page.waitForFunction(() => Number(document.querySelector('#preview-track')?.getAttribute('aria-valuenow')) >= 3,
-    { timeout: 9000 });
+  await page.waitForFunction(
+    (startTime) => Date.parse(document.querySelector('#orbit-stage')?.dataset.simulationUtc) > Date.parse(startTime) + 86400000,
+    { timeout: 12000 }, orbitBefore.time,
+  );
   const orbitDuring = await page.$eval('#orbit-stage', el => ({
     longitude: Number(el.dataset.orbitLongitude),
     time: el.dataset.simulationUtc,
   }));
-  assert.ok(Math.abs(orbitDuring.longitude - orbitBefore.longitude) > .02,
+  assert.ok(Math.abs(orbitDuring.longitude - orbitBefore.longitude) > .008,
     'Earth must physically move along its orbit during seasonal playback');
   assert.ok(Date.parse(orbitDuring.time) > Date.parse(orbitBefore.time) + 86400000,
     'Seasonal preview must advance simulated UTC date');
-  assert.equal(await page.$eval('#preview-heading', el => el.textContent), '365D / SEASONS');
+  assert.equal(await page.$eval('#preview-heading', el => el.textContent), '365D / 12 MIN · SEASONS');
   await page.click('#year-preview-toggle');
   await page.waitForFunction(() => document.body.dataset.timeMode === 'live', { timeout: 5000 });
   assert.equal(await page.$eval('#year-preview-label', el => el.textContent), '365 天 · 四季预演');

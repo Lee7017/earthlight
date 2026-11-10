@@ -25,28 +25,32 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Run astronomy and playback tests
-        run: node --test src/*.test.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
 
-      - name: Validate browser JavaScript syntax
+      - name: Install build and browser-test dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run astronomy and playback tests
+        run: npm test
+
+      - name: Validate JavaScript syntax
         run: |
           node --check src/main.js
           node --check src/solar.js
           node --check src/preview.js
+          node --check scripts/build.mjs
+
+      - name: Build self-hosted site
+        run: npm run build
 
       - name: Browser smoke test (real button interaction)
         run: |
-          npm install --no-save puppeteer-core@24.30.0
-          python3 -m http.server 8000 --bind 127.0.0.1 > /tmp/earthlight-http.log 2>&1 &
+          python3 -m http.server 8000 --bind 127.0.0.1 --directory _site > /tmp/earthlight-http.log 2>&1 &
           sleep 2
           node tests/browser-smoke.mjs
-
-      - name: Prepare static site
-        run: |
-          mkdir -p _site
-          cp index.html favicon.svg _site/
-          cp -R src _site/
-          touch _site/.nojekyll
 
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v5

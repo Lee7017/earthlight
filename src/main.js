@@ -500,9 +500,9 @@ function setPreviewUI() {
   $('header-status-label').textContent = yearActive ? 'PREVIEW · +1 YEAR' :
     dayActive ? 'PREVIEW · +24H' : 'LIVE · REAL TIME';
 
-  $('preview-heading').textContent = yearActive ? '365D / SEASONS' : '24H / TIME-LAPSE';
+  $('preview-heading').textContent = yearActive ? '365D / 12 MIN · SEASONS' : '24H / TIME-LAPSE';
   $('preview-start-label').textContent = '从当前时刻开始';
-  $('preview-end-label').textContent = yearActive ? '未来一个回归年' : '未来 24 小时';
+  $('preview-end-label').textContent = yearActive ? '未来一年 · 约 1.97 秒/天' : '未来 24 小时';
 }
 
 function showPreviewProgress(progress) {

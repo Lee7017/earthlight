@@ -57,6 +57,9 @@ try {
   assert.ok(Math.abs(frameStructure.sunHeight) < 1e-10, 'Sunlight direction should lie in horizontal tabletop plane');
   assert.ok(Math.abs(frameStructure.tilt - 23.44 * Math.PI / 180) < .001);
   console.log('Physical scene hierarchy: static horizontal circle, inclined tropics, spinning Earth: PASS');
+  assert.equal(await page.$eval('#globe-stage', el => Number(el.dataset.sunlightRayCount)), 1,
+    'There must be exactly one visible sunlight ray, not three');
+  console.log('Single direct sunlight ray, without parallel helper rays: PASS');
   const globeWidth = await page.$eval('#globe-stage', el => el.getBoundingClientRect().width);
   assert.ok(globeWidth > 300, 'The shared Earth view should remain legible beside the orbit');
   assert.ok(await page.$('#orbit-mount canvas'), 'Heliocentric orbit must render its own interactive 3D canvas');

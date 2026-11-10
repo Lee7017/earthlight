@@ -72,12 +72,21 @@
           <span class="globe-index" id="map-quality">01 / EARTH VIEW · LOADING</span>
           <span class="globe-mode" id="globe-mode"><span class="mode-dot"></span><span id="globe-mode-label">LIVE ILLUMINATION</span></span>
         </div>
+        <nav class="city-presets" aria-label="城市视角快捷切换">
+          <span class="city-presets-label">城市视角</span>
+          <button class="city-chip active" type="button" data-city="beijing" aria-pressed="true">北京</button>
+          <button class="city-chip" type="button" data-city="xiongan" aria-pressed="false">雄安</button>
+          <button class="city-chip" type="button" data-city="xian" aria-pressed="false">西安</button>
+          <button class="city-chip" type="button" data-city="urumqi" aria-pressed="false">乌鲁木齐</button>
+          <button class="city-chip" type="button" data-city="london" aria-pressed="false">伦敦</button>
+          <button class="city-chip" type="button" data-city="silicon-valley" aria-pressed="false" title="以加州山景城作为硅谷代表位置">硅谷</button>
+        </nav>
         <div class="globe-stage" id="globe-stage">
           <div class="orbital-halo halo-a"></div>
           <div class="orbital-halo halo-b"></div>
           <div id="globe-mount" class="globe-mount" aria-label="可拖动旋转、滚轮缩放的三维地球"></div>
           <div class="loading-overlay" id="loading-overlay"><span class="loading-ring"></span><span>正在构建地球…</span></div>
-          <div class="globe-pin china-pin" id="china-pin"><span class="pin-node"></span><span class="pin-text">中国 · 初始中心</span></div>
+          <div class="globe-pin focused-city-pin" id="city-pin"><span class="pin-node"></span><span class="pin-text" id="focused-city-label">中国 · 北京</span></div>
           <div class="globe-pin sun-pin" id="sun-pin"><span class="pin-node"></span><span class="pin-text">太阳直射点</span></div>
           <div class="preview-overlay" id="preview-overlay" hidden aria-label="24 小时预演进度">
             <div class="preview-overlay-top"><span>24H / TIME-LAPSE</span><strong id="preview-elapsed">+00:00 / +24:00</strong></div>
@@ -100,8 +109,8 @@
             <button id="terminator-toggle" class="view-button selected" type="button" aria-pressed="true" title="显示或隐藏晨昏线">
               <span class="button-circle boundary-symbol"></span>晨昏线
             </button>
-            <button id="reset-view" class="view-button reset-button" type="button" title="回到中国正对的初始视角">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2.64 6.36"/><path d="M3 4v7h7"/></svg> 中国视角
+            <button id="reset-view" class="view-button reset-button" type="button" title="回到中国北京的默认视角">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2.64 6.36"/><path d="M3 4v7h7"/></svg> 北京视角
             </button>
           </div>
         </div>

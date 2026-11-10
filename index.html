@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#070d17" />
+  <meta name="description" content="Earthlight：实时观察地球与太阳的位置、昼夜分布和晨昏线。默认面向中国，纯浏览器运行。" />
+  <title>Earthlight — 此刻的昼与夜</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="preconnect" href="https://threejs.org" crossorigin />
+  <link rel="stylesheet" href="./src/styles.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module" src="./src/main.js"></script>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="Earthlight 首页">
+        <span class="brand-symbol"><span class="brand-orbit"></span><span class="brand-core"></span></span>
+        <span class="brand-type"><strong>EARTHLIGHT</strong><small>SOLAR OBSERVATORY</small></span>
+      </a>
+      <div class="header-right">
+        <span class="live-pill"><span class="live-dot"></span><span>LIVE <span class="live-word">· REAL TIME</span></span></span>
+        <a class="repo-link" href="https://github.com/Lee7017/earthlight" target="_blank" rel="noopener noreferrer" aria-label="查看 GitHub 源码">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .9a11.1 11.1 0 0 0-3.51 21.63c.55.1.76-.24.76-.54v-2.12c-3.09.67-3.74-1.31-3.74-1.31-.5-1.28-1.22-1.62-1.22-1.62-1.01-.69.07-.68.07-.68 1.12.08 1.71 1.15 1.71 1.15.99 1.69 2.6 1.2 3.24.92.1-.72.39-1.2.7-1.48-2.47-.28-5.06-1.24-5.06-5.48 0-1.21.43-2.2 1.14-2.97-.11-.28-.49-1.41.11-2.93 0 0 .93-.3 3.05 1.13a10.6 10.6 0 0 1 5.56 0c2.12-1.44 3.05-1.13 3.05-1.13.6 1.52.22 2.65.11 2.93.71.77 1.14 1.76 1.14 2.97 0 4.25-2.6 5.19-5.08 5.47.4.35.76 1.02.76 2.06v3.06c0 .3.2.65.77.54A11.1 11.1 0 0 0 12 .9Z"/></svg>
+          <span>源代码</span>
+        </a>
+      </div>
+    </header>
+
+    <main class="dashboard">
+      <section class="intro-panel" aria-labelledby="hero-title">
+        <div class="section-kicker"><span class="kicker-line"></span> EARTH / SUN / NOW</div>
+        <h1 id="hero-title">此刻的<br /><span>昼与夜<span class="period">。</span></span></h1>
+        <p class="hero-description">从太空看地球，让阳光告诉你，现在的世界在哪里醒来，在哪里入眠。</p>
+
+        <div class="time-group">
+          <div class="group-heading"><span class="tiny-circle"></span> 当前时刻 <span class="minor-tag">UTC +08</span></div>
+          <div class="time-display" id="beijing-time" aria-live="off">--:--<span>:--</span></div>
+          <div class="date-display" id="beijing-date">正在同步时间…</div>
+          <div class="utc-row"><span>UTC 协调世界时</span><strong id="utc-time">--:--:--</strong></div>
+        </div>
+
+        <div class="info-divider"></div>
+
+        <div class="field-heading">太阳直射点 <span class="field-heading-en">SUBSOLAR POINT</span></div>
+        <div class="coordinate-grid">
+          <div class="coordinate-card">
+            <span>纬度 · LATITUDE</span>
+            <strong id="sun-latitude">--°</strong>
+          </div>
+          <div class="coordinate-card">
+            <span>经度 · LONGITUDE</span>
+            <strong id="sun-longitude">--°</strong>
+          </div>
+        </div>
+        <p class="data-note">太阳光此刻垂直照射的地表位置。位置根据 UTC 时间实时计算。</p>
+
+        <div class="left-bottom"><span class="small-sparkle">✳</span><span>地球从不停止转动，日夜也从不停止交替。</span></div>
+      </section>
+
+      <section class="globe-panel" aria-label="交互式三维地球">
+        <div class="globe-top">
+          <span class="globe-index">01 / EARTH VIEW</span>
+          <span class="globe-mode"><span class="mode-dot"></span> LIVE ILLUMINATION</span>
+        </div>
+        <div class="globe-stage" id="globe-stage">
+          <div class="orbital-halo halo-a"></div>
+          <div class="orbital-halo halo-b"></div>
+          <div id="globe-mount" class="globe-mount" aria-label="可拖动旋转、滚轮缩放的三维地球"></div>
+          <div class="loading-overlay" id="loading-overlay"><span class="loading-ring"></span><span>正在构建地球…</span></div>
+          <div class="globe-pin china-pin" id="china-pin"><span class="pin-node"></span><span class="pin-text">中国 · 初始中心</span></div>
+          <div class="globe-pin sun-pin" id="sun-pin"><span class="pin-node"></span><span class="pin-text">太阳直射点</span></div>
+          <div class="view-annotation top-left">N<span class="annotation-line"></span> 90°</div>
+          <div class="view-annotation bottom-right">3D / WGS84 <span class="micro-cross">✳</span></div>
+        </div>
+        <div class="globe-bottom">
+          <div class="controls-hint">
+            <span class="gesture-icon">⤨</span><span>拖动旋转</span>
+            <span class="hint-sep">/</span>
+            <span>滚轮缩放</span>
+          </div>
+          <div class="viewer-actions">
+            <button id="terminator-toggle" class="view-button selected" type="button" aria-pressed="true" title="显示或隐藏晨昏线">
+              <span class="button-circle boundary-symbol"></span>晨昏线
+            </button>
+            <button id="reset-view" class="view-button reset-button" type="button" title="回到中国正对的初始视角">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2.64 6.36"/><path d="M3 4v7h7"/></svg> 中国视角
+            </button>
+          </div>
+        </div>
+        <div class="globe-error" id="globe-error" role="status" hidden></div>
+      </section>
+
+      <aside class="details-panel" aria-label="太阳和地球数据">
+        <div class="section-kicker right-kicker">LIVE DATA <span class="kicker-line"></span></div>
+        <section class="detail-card solar-card">
+          <div class="detail-topline"><span>02 / SOLAR DIRECTION</span><span class="sun-small">✺</span></div>
+          <h2>阳光从哪里来</h2>
+          <p>以中国中部（35°N, 105°E）为参考</p>
+
+          <div class="sun-horizon" aria-hidden="true">
+            <div class="horizon-glow"></div>
+            <div class="sun-guide sun-guide-1"></div>
+            <div class="sun-guide sun-guide-2"></div>
+            <div class="horizon-line"></div>
+            <div class="horizon-sun" id="horizon-sun"></div>
+            <span class="horizon-label zenith">天顶 +90°</span>
+            <span class="horizon-label horiz">地平线 0°</span>
+            <span class="horizon-label nadir">天底 −90°</span>
+          </div>
+
+          <div class="sun-data-row">
+            <span>太阳高度角</span>
+            <strong id="solar-altitude">--°</strong>
+          </div>
+          <div class="sun-data-row sun-data-secondary">
+            <span>中国参考点</span>
+            <span class="day-state" id="china-day-state">计算中</span>
+          </div>
+        </section>
+
+        <section class="detail-card legend-card">
+          <div class="detail-topline">03 / READING THE GLOBE</div>
+          <h2>如何阅读这颗地球</h2>
+          <div class="legend-row"><span class="legend-icon lit"></span><div><strong>白昼</strong><small>面向太阳的一侧</small></div></div>
+          <div class="legend-row"><span class="legend-icon night"></span><div><strong>黑夜</strong><small>背向太阳的一侧 · 城市灯光</small></div></div>
+          <div class="legend-row"><span class="legend-icon line"></span><div><strong>晨昏线</strong><small>太阳在地平线上的地理边界</small></div></div>
+        </section>
+
+        <div class="model-caption">
+          <span class="caption-cross">+</span>
+          <p>实时太阳位置采用近似天文公式计算。地球光影为可视化模拟；太阳与地球的实际距离未按比例展示。</p>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="footer">
+      <span>EARTHLIGHT <span class="footer-dot">·</span> A WINDOW TO OUR PLANET</span>
+      <span>PURE FRONTEND <span class="footer-dot">/</span> THREE.JS <span class="footer-dot">/</span> SOLAR EPHEMERIS</span>
+      <span id="updated-at">每秒与当前时间同步</span>
+    </footer>
+  </div>
+</body>
+</html>

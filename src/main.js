@@ -366,6 +366,7 @@ function updateAstronomy(now) {
   stage.dataset.horizontalRingParent = illuminationRig.horizontalRing.parent?.type || 'none';
   stage.dataset.tropicsParent = illuminationRig.belt.parent?.name || 'none';
   stage.dataset.earthSurfaceParent = illuminationRig.spinGroup.name;
+  stage.dataset.sunlightRayCount = String(scene.children.filter(object => object.name === 'direct-sunlight-arrow' || object.name === 'parallel-sunlight-ray').length);
 
   $('sun-latitude').textContent = formatCoordinate(subsolar.latitude, 'lat');
   $('sun-longitude').textContent = formatCoordinate(subsolar.longitude, 'lon');

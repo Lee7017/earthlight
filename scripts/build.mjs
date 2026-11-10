@@ -90,16 +90,20 @@ for (const asset of textures) {
   }
   if (!original) throw new Error('All 8K texture sources failed for ' + asset.type);
 
-  // 8K original for strong desktops, 4K for normal 2K monitors, 2K for phones.
+  // 512px previews render immediately. 2K/4K/8K follow progressively.
+  // All sizes are generated from the SAME source and share map orientation.
   await writeFile(path.join(outdir, 'textures', asset.type + '_8192.jpg'), original);
-  for (const width of [4096, 2048]) {
+  for (const width of [512, 2048, 4096]) {
     const height = width / 2;
     const resized = await sharp(original)
       .resize(width, height, { fit: 'fill', kernel: 'lanczos3' })
-      .jpeg({ quality: width === 4096 ? 92 : 88, mozjpeg: true })
+      .jpeg({
+        quality: width === 512 ? 68 : width === 4096 ? 92 : 88,
+        mozjpeg: true,
+      })
       .toBuffer();
     await writeFile(path.join(outdir, 'textures', asset.type + '_' + width + '.jpg'), resized);
     console.log('Generated', width + 'x' + height, asset.type, resized.length + ' bytes');
   }
 }
-console.log('Built 2K/4K/8K locally hosted Earth maps and JavaScript:', generatedFile, 'CSS:', cssFilename);
+console.log('Built 512px preview plus 2K/4K/8K locally hosted Earth maps:', generatedFile, 'CSS:', cssFilename);

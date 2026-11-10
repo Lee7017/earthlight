@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { solarPosition, geographicVector, solarElevation, formatCoordinate } from './solar.js';
+import { previewFrame } from './preview.js';
 
 const $ = (id) => document.getElementById(id);
 const GLOBE_RADIUS = 2;
@@ -281,7 +282,7 @@ function updateAstronomy(now) {
   const state = $('china-day-state');
   state.className = 'day-state ' + (altitude >= 0 ? 'day' : 'night');
   state.textContent = altitude >= 0 ? '☀ 白昼' : '☾ 黑夜';
-  $('updated-at').textContent = `太阳位置更新于 ${new Intl.DateTimeFormat('zh-CN', {
+  $('updated-at').textContent = `${previewState ? '预演时刻' : '太阳位置更新于'} ${new Intl.DateTimeFormat('zh-CN', {
     hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Shanghai', hour12: false
   }).format(now)}`;
 }
@@ -317,19 +318,89 @@ new ResizeObserver(layout).observe(stage);
 window.addEventListener('resize', layout);
 layout();
 
-let lastSecond = -1;
-function animate() {
+let previewState = null;
+let lastLiveSecond = -1;
+
+function renderAt(date) {
+  updateClock(date);
+  updateAstronomy(date);
+}
+
+function setPreviewUI(enabled) {
+  $('preview-overlay').hidden = !enabled;
+  $('preview-toggle').classList.toggle('selected', enabled);
+  $('preview-toggle').setAttribute('aria-pressed', String(enabled));
+  $('preview-button-label').textContent = enabled ? '退出预演' : '24 小时预演';
+  $('preview-icon').textContent = enabled ? '■' : '▶';
+  $('clock-mode-label').textContent = enabled ? '预演时刻' : '当前时刻';
+  $('globe-mode-label').textContent = enabled ? '24H TIME-LAPSE' : 'LIVE ILLUMINATION';
+  $('globe-mode').classList.toggle('is-preview', enabled);
+  $('header-status').classList.toggle('is-preview', enabled);
+  $('header-status-label').textContent = enabled ? 'PREVIEW · +24H' : 'LIVE · REAL TIME';
+}
+
+function showPreviewProgress(progress) {
+  const elapsedMinutes = Math.floor(progress * 1440);
+  const hours = String(Math.floor(elapsedMinutes / 60)).padStart(2, '0');
+  const minutes = String(elapsedMinutes % 60).padStart(2, '0');
+  $('preview-elapsed').textContent = '+' + hours + ':' + minutes + ' / +24:00';
+  $('preview-track-fill').style.width = (progress * 100).toFixed(2) + '%';
+  $('preview-track').setAttribute('aria-valuenow', String(Math.round(progress * 100)));
+}
+
+function stopPreview() {
+  previewState = null;
+  setPreviewUI(false);
+  lastLiveSecond = -1;
+  renderAt(new Date());
+}
+
+$('preview-toggle').addEventListener('click', () => {
+  if (previewState) {
+    stopPreview();
+    return;
+  }
+
+  const now = new Date();
+  previewState = {
+    realStartEpochMs: now.getTime(),
+    animationStartMs: performance.now(),
+    lastRenderedAt: -Infinity,
+  };
+  setPreviewUI(true);
+  showPreviewProgress(0);
+  renderAt(now);
+});
+
+function animate(timestamp) {
   requestAnimationFrame(animate);
   controls.update();
-  const now = new Date();
-  const second = Math.floor(now.getTime() / 1000);
-  if (second !== lastSecond) {
-    lastSecond = second;
-    updateClock(now);
-    updateAstronomy(now);
+
+  if (previewState) {
+    const frame = previewFrame(
+      previewState.realStartEpochMs,
+      previewState.animationStartMs,
+      timestamp,
+    );
+    if (frame.complete) {
+      // Never leave the globe, clock or Sun data in simulated future time.
+      stopPreview();
+    } else if (timestamp - previewState.lastRenderedAt >= 50) {
+      previewState.lastRenderedAt = timestamp;
+      renderAt(frame.date);
+      showPreviewProgress(frame.progress);
+    }
+  } else {
+    const now = new Date();
+    const second = Math.floor(now.getTime() / 1000);
+    if (second !== lastLiveSecond) {
+      lastLiveSecond = second;
+      renderAt(now);
+    }
   }
+
   updatePin($('china-pin'), geoVector(CHINA.latitude, CHINA.longitude, GLOBE_RADIUS * 1.018));
   updatePin($('sun-pin'), currentSun.clone().multiplyScalar(GLOBE_RADIUS * 1.018));
   renderer.render(scene, camera);
 }
-animate();
+requestAnimationFrame(animate);

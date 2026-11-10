@@ -1,7 +1,7 @@
 /**
  * Approximate solar ephemeris using the NOAA/Meeus equations.
  * All inputs/outputs are independent of the visitor's timezone.
- * Typical accuracy of the Sun's position is within about 0.01°-0.1°.
+ * Best suited to contemporary dates, not a high-precision JPL ephemeris.
  */
 const RAD = Math.PI / 180;
 const DEG = 180 / Math.PI;
@@ -56,7 +56,7 @@ export function solarPosition(date = new Date()) {
 }
 
 /** ECEF-like unit vector in the globe's Three.js coordinate system.
- * Greenwich meridian faces -Z; 90°E faces +X; north is +Y.
+ * Greenwich meridian faces +Z; 90°E faces +X; north is +Y.
  */
 export function geographicVector(latitude, longitude) {
   const phi = latitude * RAD;
@@ -64,7 +64,7 @@ export function geographicVector(latitude, longitude) {
   return [
     Math.cos(phi) * Math.sin(lambda),
     Math.sin(phi),
-    -Math.cos(phi) * Math.cos(lambda),
+    Math.cos(phi) * Math.cos(lambda),
   ];
 }
 

@@ -94,7 +94,8 @@ export function createIlluminationRig(scene, earth, radius) {
   rotationAxis.name = 'earth-axis';
   tiltGroup.add(rotationAxis);
 
-  // An arrow for the current sunlight. As seen on the horizontal tabletop
+  // The ONLY sunlight ray: one arrow from outside the globe toward the
+  // current subsolar point. As seen on the horizontal tabletop
   // its direction changes slowly with Earth's annual orbital motion,
   // NOT once per day with the geographic surface.
   const centerRay = new THREE.ArrowHelper(
@@ -109,22 +110,6 @@ export function createIlluminationRig(scene, earth, radius) {
   centerRay.cone.material.opacity = .90;
   scene.add(centerRay);
 
-  const parallelRays = [];
-  for (const side of [-1, 1]) {
-    const ray = new THREE.Line(
-      new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(0, 0, 0),
-        new THREE.Vector3(0, 0, 0),
-      ]),
-      new THREE.LineBasicMaterial({
-        color: 0xffd2a1, opacity: .35, transparent: true, depthWrite: false,
-      }),
-    );
-    ray.name = 'parallel-sunlight-ray';
-    scene.add(ray);
-    parallelRays.push({ray,side});
-  }
-
   let state = initial;
   function update(date) {
     state = illuminationFrame(date);
@@ -136,18 +121,6 @@ export function createIlluminationRig(scene, earth, radius) {
     centerRay.position.copy(sun).multiplyScalar(radius * 1.93);
     centerRay.setDirection(sun.clone().negate());
 
-    const sideways = new THREE.Vector3().crossVectors(sun, new THREE.Vector3(0, 1, 0)).normalize();
-    for (const {ray,side} of parallelRays) {
-      const offset = sideways.clone().multiplyScalar(side * radius * .24);
-      const reach = Math.sqrt(1 - .24 * .24);
-      const start = sun.clone().multiplyScalar(radius * 1.9).add(offset);
-      const end = sun.clone().multiplyScalar(radius * (reach + .06)).add(offset);
-      const attribute = ray.geometry.attributes.position;
-      attribute.setXYZ(0, start.x, start.y, start.z);
-      attribute.setXYZ(1, end.x, end.y, end.z);
-      attribute.needsUpdate = true;
-      ray.geometry.computeBoundingSphere();
-    }
     return state;
   }
 

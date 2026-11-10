@@ -77,7 +77,7 @@ try {
         const r = document.querySelector(selector).getBoundingClientRect();
         return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height };
       };
-      const button = document.querySelector('.city-chip');
+      const button = document.querySelector('.mode-button.is-active');
       return {
         innerWidth, innerHeight,
         scrollHeight: document.documentElement.scrollHeight,
@@ -85,19 +85,19 @@ try {
         topbar: rect('.topbar'),
         stage: rect('#globe-stage'),
         footer: rect('.footer'),
-        cityNav: rect('.city-presets'),
+        viewHeader: rect('.globe-top'),
         controls: rect('.globe-bottom'),
-        chipRadius: getComputedStyle(button).borderTopLeftRadius,
+        modeRadius: getComputedStyle(button).borderTopLeftRadius,
         cssUrl: document.querySelector('link[rel="stylesheet"]').getAttribute('href'),
       };
     });
     assert.ok(layout.cssUrl.startsWith('./assets/styles-'), 'Stylesheet URL must include its content hash');
-    assert.ok(parseFloat(layout.chipRadius) >= 20, 'The city chips should load the new rounded styling');
+    assert.ok(parseFloat(layout.modeRadius) >= 4, 'The view switch should retain its styling');
     assert.ok(layout.scrollWidth <= width + 2, 'Desktop has unexpected horizontal overflow: ' + JSON.stringify(layout));
     assert.ok(layout.scrollHeight <= height + 2, 'Desktop is too tall and clips controls: ' + JSON.stringify(layout));
     assert.ok(layout.topbar.top >= -1 && layout.footer.bottom <= height + 2,
       'Header/footer should both remain visible: ' + JSON.stringify(layout));
-    assert.ok(layout.cityNav.bottom <= layout.stage.top + 2, 'City controls overlap the globe');
+    assert.ok(layout.viewHeader.bottom <= layout.stage.top + 2, 'View switch overlaps globe');
     assert.ok(layout.stage.bottom <= layout.controls.top + 2, 'Globe overlaps the control toolbar');
     assert.ok(layout.stage.height >= 325, 'Globe has insufficient viewport height: ' + JSON.stringify(layout));
     console.log('Desktop layout fits without clipping:', width, 'x', height,
@@ -146,60 +146,34 @@ try {
   assert.equal(await page.$eval('#year-preview-label', el => el.textContent), '四季预演 · 12 分钟');
   console.log('Seasonal year playback, synchronized orbit and return to live: PASS');
 
-  // Real browser test of six geographic camera targets, including both hemispheres.
-  const cityChecks = [
-    ['beijing', '北京'],
-    ['xiongan', '雄安'],
-    ['xian', '西安'],
-    ['urumqi', '乌鲁木齐'],
-    ['london', '伦敦'],
-    ['silicon-valley', '硅谷'],
-  ];
-  assert.equal(await page.evaluate(() => document.querySelectorAll('.city-chip').length), 6);
+  // Beijing is the ONLY city. No picker row or extra dots should exist.
+  assert.equal(await page.evaluate(() => document.querySelector('.city-presets')), null);
+  assert.equal(await page.evaluate(() => document.querySelectorAll('.city-chip').length), 0);
+  assert.equal(await page.evaluate(() => document.querySelectorAll('.map-city-dot').length), 0);
   assert.equal(await page.$eval('#globe-stage', el => el.dataset.focusCity), 'beijing');
-  for (const [id, name] of cityChecks) {
-    await page.click('.city-chip[data-city="' + id + '"]');
-    await page.waitForFunction(
-      (expectedId) => document.querySelector('#globe-stage')?.dataset.focusCity === expectedId,
-      { timeout: 3000 },
-      id,
-    );
-    await page.waitForFunction(
-      (expectedId) => {
-        const dot = document.querySelector('.map-city-dot[data-city="' + expectedId + '"]');
-        const marker = document.querySelector('#city-pin');
-        return dot?.classList.contains('is-selected') && parseFloat(marker.style.opacity || '0') > .8;
-      },
-      { timeout: 3500 },
-      id,
-    );
-    // The previously visible selected dot and the labeled pin represented
-    // the same city, but CSS shifted the pin. Keep exactly one highlight,
-    // centered on the projected geographic point.
-    const pinAlignment = await page.evaluate((expectedId) => {
-      const stage = document.querySelector('#globe-stage');
-      const pin = document.querySelector('#city-pin');
-      const node = pin.querySelector('.pin-node');
-      const originalDot = document.querySelector('.map-city-dot[data-city="' + expectedId + '"]');
-      const stageRect = stage.getBoundingClientRect();
-      const nodeRect = node.getBoundingClientRect();
-      return {
-        duplicateHidden: getComputedStyle(originalDot).display === 'none',
-        offsetX: Math.abs(nodeRect.left + nodeRect.width / 2 - (stageRect.left + parseFloat(pin.style.left))),
-        offsetY: Math.abs(nodeRect.top + nodeRect.height / 2 - (stageRect.top + parseFloat(pin.style.top))),
-      };
-    }, id);
-    assert.equal(pinAlignment.duplicateHidden, true, id + ' must not have a duplicate colored dot');
-    assert.ok(pinAlignment.offsetX <= 1.5 && pinAlignment.offsetY <= 1.5,
-      id + ' marker must match its projected location: ' + JSON.stringify(pinAlignment));
-    assert.equal(await page.$eval('#focused-city-label', el => el.textContent.includes(name)), true);
-    assert.equal(await page.$eval('.city-chip[data-city="' + id + '"]', el => el.getAttribute('aria-pressed')), 'true');
-  }
-  console.log('Six city presets navigate and show focused markers: PASS');
+  assert.equal(await page.$eval('#focused-city-label', el => el.textContent), '中国 · 北京');
 
   await page.click('#reset-view');
+  await page.waitForFunction(() => {
+    const pin = document.querySelector('#city-pin');
+    return pin && parseFloat(pin.style.opacity || '0') > .8;
+  }, { timeout: 3500 });
   assert.equal(await page.$eval('#globe-stage', el => el.dataset.focusCity), 'beijing');
-  console.log('Default Beijing camera reset: PASS');
+
+  const pinAlignment = await page.evaluate(() => {
+    const stage = document.querySelector('#globe-stage');
+    const pin = document.querySelector('#city-pin');
+    const node = pin.querySelector('.pin-node');
+    const stageRect = stage.getBoundingClientRect();
+    const nodeRect = node.getBoundingClientRect();
+    return {
+      offsetX: Math.abs(nodeRect.left + nodeRect.width / 2 - (stageRect.left + parseFloat(pin.style.left))),
+      offsetY: Math.abs(nodeRect.top + nodeRect.height / 2 - (stageRect.top + parseFloat(pin.style.top))),
+    };
+  });
+  assert.ok(pinAlignment.offsetX <= 1.5 && pinAlignment.offsetY <= 1.5,
+    'Beijing marker must match its projected geographic location: ' + JSON.stringify(pinAlignment));
+  console.log('Beijing-only default and reset camera, one aligned marker: PASS');
 
   const initialDayFrame = await page.$eval('#globe-stage', el => ({
     spin: Number(el.dataset.earthSpin), heading: Number(el.dataset.sunlightHeading),
@@ -243,12 +217,11 @@ try {
   );
   assert.equal(await page.$eval('#globe-error', el => el.hidden), true);
   console.log('Mobile texture loaded:', await page.$eval('#map-quality', el => el.textContent));
-  assert.equal(await page.evaluate(() => document.querySelectorAll('.city-chip').length), 6);
-  await page.click('.city-chip[data-city="london"]');
-  await page.waitForFunction(() => document.querySelector('#globe-stage')?.dataset.focusCity === 'london',
-    { timeout: 3000 });
-  assert.equal(await page.$eval('.city-chip[data-city="london"]', el => el.getAttribute('aria-pressed')), 'true');
-  console.log('Mobile city picker: PASS');
+  assert.equal(await page.evaluate(() => document.querySelector('.city-presets') === null), true);
+  assert.equal(await page.$eval('#globe-stage', el => el.dataset.focusCity), 'beijing');
+  assert.equal(await page.$eval('#focused-city-label', el => el.textContent), '中国 · 北京');
+  await page.click('#reset-view');
+  console.log('Mobile Beijing-only default and reset: PASS');
 
   // Responsive layout regression test with actual mobile widths, not only
   // Puppeteer's page click emulation.
@@ -264,7 +237,7 @@ try {
         viewport: document.documentElement.clientWidth,
         scrollWidth: document.documentElement.scrollWidth,
         header: rect('.topbar'),
-        cities: rect('.city-presets'),
+        viewHeader: rect('.globe-top'),
         actions: rect('.globe-bottom'),
         earth: rect('#globe-stage'),
         orbit: rect('#orbit-stage'),
@@ -272,15 +245,12 @@ try {
         buttons: [...document.querySelectorAll('.viewer-actions .view-button')].map(el => {
           const r=el.getBoundingClientRect();return {id:el.id,x:r.left,right:r.right,width:r.width,height:r.height};
         }),
-        cityChips: [...document.querySelectorAll('.city-chip')].map(el => {
-          const r=el.getBoundingClientRect();return {right:r.right,width:r.width};
-        }),
       };
     });
     assert.ok(geometry.scrollWidth <= geometry.viewport + 2,
       'Mobile horizontal overflow: ' + JSON.stringify(geometry));
-    assert.ok(geometry.cities.bottom <= geometry.actions.top + 2,
-      'Mobile city row and playback controls overlap: ' + JSON.stringify(geometry));
+    assert.ok(geometry.viewHeader.bottom <= geometry.actions.top + 2,
+      'Mobile view switch and playback controls overlap: ' + JSON.stringify(geometry));
     assert.ok(geometry.actions.bottom <= geometry.earth.top + 2,
       'Mobile playback buttons should precede the Earth: ' + JSON.stringify(geometry));
     assert.ok(geometry.earth.bottom <= geometry.orbit.top + 2,
@@ -292,9 +262,6 @@ try {
         'Mobile touch control too small: ' + JSON.stringify(geometry));
       assert.ok(button.x >= -1 && button.right <= geometry.viewport + 2,
         'Mobile button outside viewport: ' + JSON.stringify(geometry));
-    }
-    for (const chip of geometry.cityChips) {
-      assert.ok(chip.right <= geometry.viewport + 2, 'Mobile city chip outside viewport');
     }
     console.log('Mobile layout verified:', width + 'px', 'Earth', Math.round(geometry.earth.height),
       'Orbit', Math.round(geometry.orbit.height), 'all four controls reachable');

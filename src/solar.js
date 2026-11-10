@@ -52,6 +52,13 @@ export function solarPosition(date = new Date()) {
     longitude,
     equationOfTime,
     julianDay,
+    // Apparent solar ecliptic longitude; Earth's heliocentric direction
+    // is opposite this vector (approximation, not a JPL ephemeris).
+    sunEclipticLongitude: wrap360(apparentLongitude),
+    obliquity,
+    eccentricity,
+    earthSunDistanceAU: (1 - eccentricity * eccentricity) /
+      (1 + eccentricity * cos(meanAnomaly + center)),
   };
 }
 

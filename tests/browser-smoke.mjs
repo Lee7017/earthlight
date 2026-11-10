@@ -29,11 +29,26 @@ try {
     return clock?.textContent && !clock.textContent.includes('--');
   }, { timeout: 25000 });
 
-  // This checks that actual image data loaded, not merely that a WebGL canvas exists.
+  // The low-resolution image must show before any large JPEG finishes.
   await page.waitForFunction(
-    () => document.querySelector('#map-quality')?.textContent.includes('K MAP'),
+    () => document.querySelector('#globe-stage')?.dataset.textureHistory?.startsWith('512'),
     { timeout: 30000 },
   );
+  assert.equal(await page.$eval('#globe-stage', el => el.dataset.textureHistory.split(',')[0]), '512');
+  assert.equal(await page.$eval('#loading-overlay', el => el.classList.contains('is-hidden')), true,
+    'The Earth must become visible as soon as the 512px preview arrives');
+  console.log('Progressive texture: 512px day/night preview displayed first: PASS');
+
+  await page.waitForFunction(
+    () => document.querySelector('#globe-stage')?.dataset.textureHistory?.split(',').includes('2048'),
+    { timeout: 30000 },
+  );
+  assert.ok((await page.$eval('#globe-stage', el => Number(el.dataset.orbitTextureWidth))) <= 2048,
+    'The orbit inset must never upload a 4K/8K texture');
+  const qualityHistory = await page.$eval('#globe-stage', el => el.dataset.textureHistory);
+  assert.ok(qualityHistory.startsWith('512,2048'),
+    'The browser must display the preview before any high quality map: ' + qualityHistory);
+  console.log('Progressive texture: 512px → 2K upgrade and capped orbit quality: PASS');
   assert.equal(await page.$eval('#globe-error', el => el.hidden), true,
     'Earth images should load without an error');
   assert.equal(await page.evaluate(() => document.body.textContent.includes('从太空看地球')), false,
@@ -284,6 +299,39 @@ try {
   await new Promise(resolve => setTimeout(resolve, 250));
   await page.screenshot({ path: 'tests/screenshots/mobile-390.png', fullPage: true });
   console.log('Mobile view switching, seasonal preview and screenshot: PASS');
+  // Block every high-resolution JPEG to verify the globe remains usable
+  // with just the tiny preview on a slow or unreliable connection.
+  const fallbackPage = await browser.newPage();
+  try {
+    await fallbackPage.setViewport({ width: 900, height: 700, deviceScaleFactor: 1 });
+    await fallbackPage.setRequestInterception(true);
+    fallbackPage.on('request', request => {
+      if (/\/textures\/(?:day|night)_(?:2048|4096|8192)\.jpg(?:\?|$)/.test(request.url())) {
+        request.abort('failed').catch(() => {});
+      } else {
+        request.continue().catch(() => {});
+      }
+    });
+    await fallbackPage.goto(origin, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await fallbackPage.waitForFunction(
+      () => document.querySelector('#globe-stage')?.dataset.textureStage === 'ready',
+      { timeout: 30000 },
+    );
+    const fallbackState = await fallbackPage.$eval('#globe-stage', el => ({
+      history: el.dataset.textureHistory,
+      stage: el.dataset.textureStage,
+    }));
+    assert.equal(fallbackState.history, '512',
+      'High resolution network failure should leave the 512px globe visible');
+    assert.equal(await fallbackPage.$eval('#globe-error', el => el.hidden), true);
+    assert.equal(await fallbackPage.$eval('#loading-overlay', el => el.classList.contains('is-hidden')), true);
+    await fallbackPage.click('#preview-toggle');
+    await fallbackPage.waitForFunction(() => document.body.dataset.timeMode === 'day', { timeout: 5000 });
+    console.log('High-res download failure: 512px fallback remains interactive: PASS');
+  } finally {
+    await fallbackPage.close();
+  }
+
   if (pageErrors.length) throw new Error('Browser JS errors:\n' + pageErrors.join('\n'));
   console.log('PASS: browser button, simulated time, manual exit and globe canvas');
 } catch (err) {

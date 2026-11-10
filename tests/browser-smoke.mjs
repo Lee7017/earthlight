@@ -42,6 +42,49 @@ try {
   const globeWidth = await page.$eval('#globe-stage', el => el.getBoundingClientRect().width);
   assert.ok(globeWidth > 500, 'The Earth should have a larger desktop viewport');
 
+  // Visual layout regression: the screenshot issue was a stale stylesheet
+  // and a globe viewport allowed to exceed the available desktop height.
+  const desktopSizes = [
+    [1568, 890],
+    [1440, 820],
+    [1024, 768],
+  ];
+  for (const [width, height] of desktopSizes) {
+    await page.setViewport({ width, height, deviceScaleFactor: 1 });
+    await new Promise(resolve => setTimeout(resolve, 180));
+    const layout = await page.evaluate(() => {
+      const rect = (selector) => {
+        const r = document.querySelector(selector).getBoundingClientRect();
+        return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height };
+      };
+      const button = document.querySelector('.city-chip');
+      return {
+        innerWidth, innerHeight,
+        scrollHeight: document.documentElement.scrollHeight,
+        scrollWidth: document.documentElement.scrollWidth,
+        topbar: rect('.topbar'),
+        stage: rect('#globe-stage'),
+        footer: rect('.footer'),
+        cityNav: rect('.city-presets'),
+        controls: rect('.globe-bottom'),
+        chipRadius: getComputedStyle(button).borderTopLeftRadius,
+        cssUrl: document.querySelector('link[rel="stylesheet"]').getAttribute('href'),
+      };
+    });
+    assert.ok(layout.cssUrl.startsWith('./assets/styles-'), 'Stylesheet URL must include its content hash');
+    assert.ok(parseFloat(layout.chipRadius) >= 20, 'The city chips should load the new rounded styling');
+    assert.ok(layout.scrollWidth <= width + 2, 'Desktop has unexpected horizontal overflow: ' + JSON.stringify(layout));
+    assert.ok(layout.scrollHeight <= height + 2, 'Desktop is too tall and clips controls: ' + JSON.stringify(layout));
+    assert.ok(layout.topbar.top >= -1 && layout.footer.bottom <= height + 2,
+      'Header/footer should both remain visible: ' + JSON.stringify(layout));
+    assert.ok(layout.cityNav.bottom <= layout.stage.top + 2, 'City controls overlap the globe');
+    assert.ok(layout.stage.bottom <= layout.controls.top + 2, 'Globe overlaps the control toolbar');
+    assert.ok(layout.stage.height >= 325, 'Globe has insufficient viewport height: ' + JSON.stringify(layout));
+    console.log('Desktop layout fits without clipping:', width, 'x', height,
+      'globe stage', Math.round(layout.stage.width), 'x', Math.round(layout.stage.height));
+  }
+  await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+
   const canvas = await page.$('#globe-mount canvas');
   assert.ok(canvas, 'Three.js should create a globe canvas');
 

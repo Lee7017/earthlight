@@ -242,3 +242,136 @@ h1 .period { color: var(--gold); }
   .globe-top { height: 38px; }
   .globe-bottom { min-height: 56px; }
 }
+
+
+/* Sun–Earth system: three observation modes, one shared UTC clock. */
+.globe-top { gap: 10px; }
+.globe-index { flex: 0 1 auto; min-width: 0; }
+.globe-mode { flex: none; white-space: nowrap; }
+.view-switch {
+  display: flex; align-items: center; flex: none; gap: 2px;
+  padding: 3px; border: 1px solid rgba(117,168,183,.19);
+  border-radius: 8px; background: rgba(9,25,37,.65);
+}
+.mode-button {
+  border: 0; background: transparent; color: #91acb8;
+  padding: 6px 10px; border-radius: 5px; cursor: pointer;
+  font: 600 10px/1.4 system-ui,'Noto Sans SC',sans-serif; white-space: nowrap;
+}
+.mode-button:hover { color: #edf8f6; }
+.mode-button.is-active {
+  color: #a9eee5; background: rgba(68,145,142,.24);
+  box-shadow: inset 0 0 0 1px rgba(137,231,215,.2);
+}
+.visualization-layout {
+  display: grid;
+  grid-template-columns: minmax(0,1.25fr) minmax(0,.95fr);
+  gap: 11px; flex: 1 1 0; min-height: 0;
+  position: relative;
+}
+.visualization-layout .globe-stage { flex: none; width: 100%; min-height: 0; height: 100%; }
+.orbit-stage {
+  position: relative; overflow: hidden; min-height: 0;
+  width: 100%; height: 100%;
+  border: 1px solid rgba(107,166,190,.23);
+  border-radius: 8px;
+  background:
+    radial-gradient(ellipse 78% 73% at 50% 47%,rgba(30,72,95,.26),transparent 88%),
+    rgba(9,24,36,.63);
+  isolation: isolate;
+}
+.orbit-mount { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.orbit-mount canvas { display: block; width: 100%; height: 100%; }
+.orbit-header {
+  position: absolute; z-index: 4; left: 13px; right: 13px; top: 13px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 6px; color: #7b9eae;
+  font: 600 9px/1.4 'Space Grotesk',sans-serif; letter-spacing: .1em;
+  pointer-events: none;
+}
+.orbit-live-dot { width: 6px; height: 6px; border-radius: 50%; background: #95e4d5; box-shadow: 0 0 12px rgba(140,222,201,.6); }
+.orbit-sun-label {
+  position: absolute; top: 37px; left: 50%; transform: translateX(-50%);
+  color: #f9c68b; white-space: nowrap; z-index: 3; font-size: 10px;
+  letter-spacing: .05em; pointer-events: none;
+}
+.season-label {
+  position: absolute; z-index: 3; transform: translate(-50%,-50%);
+  color: #9dbbc4; font-size: 10px; white-space: nowrap;
+  text-shadow: 0 1px 5px #08131e, 0 0 7px #08131e;
+  pointer-events: none;
+}
+.orbit-earth-label {
+  position: absolute; z-index: 4; transform: translate(-50%,-50%);
+  color: #a8e7dc; white-space: nowrap; font-size: 11px;
+  pointer-events: none; font-weight: 600;
+  text-shadow: 0 1px 8px #06111d, 0 0 6px #06111d;
+}
+.orbit-readout {
+  position: absolute; z-index: 4; bottom: 45px; left: 14px; right: 14px;
+  display: flex; justify-content: space-between; gap: 8px; pointer-events: none;
+  border-top: 1px solid rgba(119,173,185,.2); padding-top: 10px;
+}
+.orbit-readout > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.orbit-readout > div:last-child { text-align: right; }
+.orbit-readout span {
+  color: #7294a5; font-size: 9px; line-height: 1.3; white-space: nowrap;
+}
+.orbit-readout strong {
+  color: #d2e8e7; font: 600 11px/1.35 system-ui,'Noto Sans SC',sans-serif;
+  white-space: nowrap;
+}
+.orbit-caption {
+  position: absolute; z-index: 4; bottom: 9px; left: 12px; right: 12px;
+  color: #698998; font-size: 9px; line-height: 1.65; text-align: center; pointer-events: none;
+}
+.year-preview-button {
+  color: #f2ca94; border-color: rgba(231,176,107,.33);
+  background: rgba(95,63,33,.14);
+}
+.year-preview-button:hover, .year-preview-button.selected {
+  color: #ffe7bf; border-color: rgba(246,191,121,.6);
+  background: rgba(134,88,47,.26);
+}
+.viewer-actions { flex-wrap: wrap; justify-content: flex-end; }
+.visualization-layout[data-view="earth"] { display: flex; }
+.visualization-layout[data-view="earth"] .globe-stage { flex: 1; }
+.visualization-layout[data-view="earth"] .orbit-stage { display: none; }
+.visualization-layout[data-view="orbit"] { display: flex; }
+.visualization-layout[data-view="orbit"] .globe-stage { display: none; }
+.visualization-layout[data-view="orbit"] .orbit-stage { flex: 1; }
+.visualization-layout[data-view="orbit"] .orbit-sun-label { top: 49px; }
+@media (min-width:721px) and (max-width:1200px) {
+  .globe-index,.globe-mode { font-size: 8px; letter-spacing: .04em; }
+  .mode-button { padding: 6px 8px; }
+  .globe-top { gap: 5px; }
+  .visualization-layout { grid-template-columns: minmax(0,1.15fr) minmax(0,1fr); gap: 7px; }
+  .globe-bottom { gap: 6px; }
+  .viewer-actions { gap: 5px; }
+  .view-button { padding: 8px 9px; }
+  .controls-hint { font-size: 9px; }
+}
+@media (max-width: 720px) {
+  .globe-top { height: auto; padding: 7px 0 10px; flex-wrap: wrap; gap: 8px; }
+  .globe-index { width: 100%; }
+  .globe-mode { margin-left: auto; }
+  .visualization-layout { display: flex; flex-direction: column; min-height: 0; flex: none; gap: 12px; }
+  .visualization-layout .globe-stage {
+    flex: none; height: min(93vw, 475px); min-height: 290px;
+  }
+  .visualization-layout .orbit-stage {
+    flex: none; height: min(100vw, 455px); min-height: 350px;
+  }
+  .visualization-layout[data-view="earth"] .globe-stage { flex: none; }
+  .visualization-layout[data-view="orbit"] .orbit-stage { flex: none; }
+  .orbit-caption { font-size: 9px; }
+  .orbit-sun-label { top: 36px; }
+  .globe-bottom { justify-content: center; }
+  .viewer-actions { justify-content: center; }
+  .view-button { font-size: 10px; }
+}
+@media (min-width: 721px) and (max-height: 745px) {
+  .globe-top { height: 36px; }
+  .orbit-readout { bottom: 39px; }
+  .orbit-caption { line-height: 1.3; }
+}

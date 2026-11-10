@@ -59,9 +59,9 @@ test('solar computation moves subsolar longitude about one revolution in 24 hour
   assert.ok(Math.abs(altitudeStart - altitudeMid) > 5, 'Sun height should change visibly during a 12h segment');
 });
 
-test('seasonal playback traverses one tropical year in 36 seconds', () => {
+test('seasonal playback traverses one tropical year in 720 seconds', () => {
   assert.equal(TROPICAL_YEAR_DAYS, 365.2422);
-  assert.equal(YEAR_PREVIEW_DURATION_MS, 36000);
+  assert.equal(YEAR_PREVIEW_DURATION_MS, 720000);
   const first = yearPreviewFrame(start, tick, tick);
   const middle = yearPreviewFrame(start, tick, tick + YEAR_PREVIEW_DURATION_MS / 2);
   const last = yearPreviewFrame(start, tick, tick + YEAR_PREVIEW_DURATION_MS);
@@ -70,6 +70,14 @@ test('seasonal playback traverses one tropical year in 36 seconds', () => {
   assert.equal(last.date.getTime(), start + YEAR_PREVIEW_SPAN_MS);
   assert.equal(last.complete, true);
 });
+test('seasonal speed shows one full solar day every ~1.97 seconds', () => {
+  const secondsPerDay = YEAR_PREVIEW_DURATION_MS / 1000 / TROPICAL_YEAR_DAYS;
+  assert.ok(secondsPerDay > 1.96 && secondsPerDay < 1.98);
+  const twoSeconds = yearPreviewFrame(start, tick, tick + 2000);
+  const elapsedDays = (twoSeconds.date.getTime() - start) / 86400000;
+  assert.ok(elapsedDays > 1.0 && elapsedDays < 1.03);
+});
+
 test('seasonal playback cannot overshoot when backgrounded', () => {
   const frame = yearPreviewFrame(start, tick, tick + YEAR_PREVIEW_DURATION_MS * 5);
   assert.equal(frame.progress, 1);

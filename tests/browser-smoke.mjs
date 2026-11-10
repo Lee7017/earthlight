@@ -75,6 +75,21 @@ try {
   assert.equal(await page.$eval('#globe-stage', el => Number(el.dataset.sunlightRayCount)), 1,
     'There must be exactly one visible sunlight ray, not three');
   console.log('Single direct sunlight ray, without parallel helper rays: PASS');
+  const palette = await page.$eval('#globe-stage', el => ({
+    circle: el.dataset.horizontalCircleColor,
+    ray: el.dataset.directRayColor,
+    tropics: el.dataset.tropicsColor,
+    axis: el.dataset.axisColor,
+    terminator: el.dataset.terminatorColor,
+  }));
+  assert.deepEqual(palette, {
+    circle: '#ffb000',
+    ray: '#ffb000',
+    tropics: '#b66cff',
+    axis: '#b9f348',
+    terminator: '#ffffff',
+  }, 'The horizontal ring and direct ray must have identical gold; other elements stay distinct');
+  console.log('Five visual elements: matching gold sunlight, purple tropics, green axis, white terminator: PASS');
   const globeWidth = await page.$eval('#globe-stage', el => el.getBoundingClientRect().width);
   assert.ok(globeWidth > 300, 'The shared Earth view should remain legible beside the orbit');
   assert.ok(await page.$('#orbit-mount canvas'), 'Heliocentric orbit must render its own interactive 3D canvas');

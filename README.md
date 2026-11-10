@@ -28,12 +28,15 @@
 
 ## 在本地运行
 
-项目采用浏览器原生 ES Modules + Three.js；**不需要 npm install 或构建步骤**。由于浏览器限制，不能直接双击打开 HTML，需要从本地 HTTP 服务器访问：
+项目是一个纯静态网站。为了避免用户浏览器被第三方 CDN 阻断，发布时会把 Three.js 打包进 JavaScript，并把地球的两张贴图放进站点目录。**最终页面不需要后端，也不会从 CDN 加载 JS 或地球贴图。**
+
+需要 Node.js 20+，本地运行：
 
 ```bash
 git clone https://github.com/Lee7017/earthlight.git
 cd earthlight
-python3 -m http.server 8000
+npm install
+npm start
 ```
 
 然后打开 http://localhost:8000/。
@@ -58,11 +61,11 @@ node --check src/main.js
 ## 技术栈与资源
 
 - Vanilla HTML / CSS / JavaScript（静态页面）
-- Three.js r180（通过 jsDelivr CDN 导入），包括 OrbitControls
-- Three.js 示例地球日间纹理和夜间灯光纹理（通过 jsDelivr CDN 加载）
+- Three.js r180 + esbuild：构建时本地打包，包括 OrbitControls
+- Three.js 示例地球日间纹理和夜间灯光纹理（构建时下载，发布后由本站同源加载）
 - GitHub Actions + GitHub Pages（免费静态托管，公共仓库）
 
-项目运行时**依赖网络下载 Three.js 和公开纹理**，但不会请求后端业务服务或向服务器上传位置数据。站点托管在 GitHub Pages 上，本身是纯静态的。
+网页运行时不依赖第三方 JavaScript CDN 或第三方地球贴图 CDN（字体可以回退到系统字体）；构建时由 GitHub Actions 下载所需资源并打包。不会上传用户位置数据。
 
 ## 结构
 
@@ -70,6 +73,8 @@ node --check src/main.js
 earthlight/
 ├── index.html                 # 仪表盘布局
 ├── favicon.svg
+├── scripts/build.mjs         # 打包静态资源和地球贴图
+├── tests/browser-smoke.mjs   # 在真实 Chrome 中点击预演并测试
 ├── src/
 │   ├── main.js               # Three.js 场景、纹理、交互、实时更新
 │   ├── styles.css            # 响应式页面样式

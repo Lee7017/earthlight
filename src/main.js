@@ -39,6 +39,8 @@ function geoVector(latitude, longitude, radius = 1) {
 // City selection changes camera direction; it never changes the solar clock.
 let activeCity = DEFAULT_CITY;
 let cityCameraMotion = null;
+let defaultCameraDistance = 6.55;
+let initialFramingDone = false;
 const cityDots = CITIES.map((city) => {
   const dot = document.createElement('span');
   dot.className = 'map-city-dot';
@@ -61,7 +63,7 @@ function syncCityUI() {
   stage.dataset.focusCity = activeCity.id;
 }
 
-function snapCameraTo(city, distance = 6.55) {
+function snapCameraTo(city, distance = defaultCameraDistance) {
   camera.position.copy(geoVector(city.latitude, city.longitude, distance));
   camera.up.set(0, 1, 0);
   camera.lookAt(0, 0, 0);
@@ -406,6 +408,19 @@ function layout() {
   const height = Math.max(1, stage.clientHeight);
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
+
+  // Frame the complete globe within the smaller stage dimension.
+  // The geometry, not the screen resolution or texture, determines the fit.
+  const targetDiameter = Math.min(width, height) * (width < 600 ? 0.78 : 0.84);
+  const verticalHalfTan = Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
+  const halfAngle = Math.atan(verticalHalfTan * targetDiameter / height);
+  defaultCameraDistance = Math.max(5.2, Math.min(10, GLOBE_RADIUS / Math.sin(halfAngle)));
+  const distance = camera.position.length();
+  if (!initialFramingDone || distance < defaultCameraDistance) {
+    camera.position.normalize().multiplyScalar(defaultCameraDistance);
+    controls.update();
+  }
+  initialFramingDone = true;
   renderer.setSize(width, height, false);
 }
 new ResizeObserver(layout).observe(stage);

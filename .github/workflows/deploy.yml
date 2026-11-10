@@ -25,11 +25,14 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Run astronomical geometry tests
-        run: node --test src/solar.test.js
+      - name: Run astronomy and playback tests
+        run: node --test src/*.test.js
 
       - name: Validate browser JavaScript syntax
-        run: node --check src/main.js
+        run: |
+          node --check src/main.js
+          node --check src/solar.js
+          node --check src/preview.js
 
       - name: Prepare static site
         run: |

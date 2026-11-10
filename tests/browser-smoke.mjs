@@ -35,6 +35,10 @@ try {
   );
   assert.equal(await page.$eval('#globe-error', el => el.hidden), true,
     'Earth images should load without an error');
+  assert.equal(await page.evaluate(() => document.body.textContent.includes('从太空看地球')), false,
+    'The removed intro copy must stay absent');
+  assert.equal(await page.evaluate(() => document.body.textContent.includes('地球从不停止转动')), false,
+    'The removed bottom slogan must stay absent');
   assert.equal(await page.$eval('.details-panel', el => el !== null).catch(() => false), false,
     'The old right-hand solar and legend panels should be removed');
   const mapLabel = await page.$eval('#map-quality', el => el.textContent);
@@ -115,6 +119,25 @@ try {
       { timeout: 3500 },
       id,
     );
+    // The previously visible selected dot and the labeled pin represented
+    // the same city, but CSS shifted the pin. Keep exactly one highlight,
+    // centered on the projected geographic point.
+    const pinAlignment = await page.evaluate((expectedId) => {
+      const stage = document.querySelector('#globe-stage');
+      const pin = document.querySelector('#city-pin');
+      const node = pin.querySelector('.pin-node');
+      const originalDot = document.querySelector('.map-city-dot[data-city="' + expectedId + '"]');
+      const stageRect = stage.getBoundingClientRect();
+      const nodeRect = node.getBoundingClientRect();
+      return {
+        duplicateHidden: getComputedStyle(originalDot).display === 'none',
+        offsetX: Math.abs(nodeRect.left + nodeRect.width / 2 - (stageRect.left + parseFloat(pin.style.left))),
+        offsetY: Math.abs(nodeRect.top + nodeRect.height / 2 - (stageRect.top + parseFloat(pin.style.top))),
+      };
+    }, id);
+    assert.equal(pinAlignment.duplicateHidden, true, id + ' must not have a duplicate colored dot');
+    assert.ok(pinAlignment.offsetX <= 1.5 && pinAlignment.offsetY <= 1.5,
+      id + ' marker must match its projected location: ' + JSON.stringify(pinAlignment));
     assert.equal(await page.$eval('#focused-city-label', el => el.textContent.includes(name)), true);
     assert.equal(await page.$eval('.city-chip[data-city="' + id + '"]', el => el.getAttribute('aria-pressed')), 'true');
   }

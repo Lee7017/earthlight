@@ -490,15 +490,15 @@ function setPreviewUI() {
 
   $('year-preview-toggle').classList.toggle('selected', yearActive);
   $('year-preview-toggle').setAttribute('aria-pressed', String(yearActive));
-  $('year-preview-label').textContent = yearActive ? '退出四季预演' : '365 天 · 四季预演';
+  $('year-preview-label').textContent = yearActive ? '退出四季预演' : '四季预演 · 12 分钟';
   $('year-preview-icon').textContent = yearActive ? '■' : '◉';
 
   $('clock-mode-label').textContent = active ? '预演时刻' : '当前时刻';
   $('globe-mode-label').textContent = yearActive ? 'SEASONS · 1 YEAR' : dayActive ? '24H TIME-LAPSE' : 'LIVE ILLUMINATION';
   $('globe-mode').classList.toggle('is-preview', active);
   $('header-status').classList.toggle('is-preview', active);
-  $('header-status-label').textContent = yearActive ? 'PREVIEW · +1 YEAR' :
-    dayActive ? 'PREVIEW · +24H' : 'LIVE · REAL TIME';
+  $('header-status-label').textContent = yearActive ? '四季预演中' :
+    dayActive ? '24 小时预演中' : '实时';
 
   $('preview-heading').textContent = yearActive ? '365D / 12 MIN · SEASONS' : '24H / TIME-LAPSE';
   $('preview-start-label').textContent = '从当前时刻开始';

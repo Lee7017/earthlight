@@ -54,7 +54,7 @@ try {
     ['london', '伦敦'],
     ['silicon-valley', '硅谷'],
   ];
-  assert.equal(await page.$eval('.city-chip', els => els.length), 6);
+  assert.equal(await page.evaluate(() => document.querySelectorAll('.city-chip').length), 6);
   assert.equal(await page.$eval('#globe-stage', el => el.dataset.focusCity), 'beijing');
   for (const [id, name] of cityChecks) {
     await page.click('.city-chip[data-city="' + id + '"]');
@@ -112,7 +112,7 @@ try {
   );
   assert.equal(await page.$eval('#globe-error', el => el.hidden), true);
   console.log('Mobile texture loaded:', await page.$eval('#map-quality', el => el.textContent));
-  assert.equal(await page.$eval('.city-chip', els => els.length), 6);
+  assert.equal(await page.evaluate(() => document.querySelectorAll('.city-chip').length), 6);
   await page.click('.city-chip[data-city="london"]');
   await page.waitForFunction(() => document.querySelector('#globe-stage')?.dataset.focusCity === 'london',
     { timeout: 3000 });

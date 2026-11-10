@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { previewFrame, PREVIEW_DURATION_MS, PREVIEW_SPAN_MS } from './preview.js';
+import {
+  previewFrame, PREVIEW_DURATION_MS, PREVIEW_SPAN_MS,
+  yearPreviewFrame, TROPICAL_YEAR_DAYS, YEAR_PREVIEW_SPAN_MS, YEAR_PREVIEW_DURATION_MS,
+} from './preview.js';
 import { solarPosition, solarElevation } from './solar.js';
 
 const start = Date.parse('2026-11-10T12:00:00Z');
@@ -54,4 +57,22 @@ test('solar computation moves subsolar longitude about one revolution in 24 hour
   const altitudeStart = solarElevation(35, 105, a.latitude, a.longitude);
   const altitudeMid = solarElevation(35, 105, midday.latitude, midday.longitude);
   assert.ok(Math.abs(altitudeStart - altitudeMid) > 5, 'Sun height should change visibly during a 12h segment');
+});
+
+test('seasonal playback traverses one tropical year in 36 seconds', () => {
+  assert.equal(TROPICAL_YEAR_DAYS, 365.2422);
+  assert.equal(YEAR_PREVIEW_DURATION_MS, 36000);
+  const first = yearPreviewFrame(start, tick, tick);
+  const middle = yearPreviewFrame(start, tick, tick + YEAR_PREVIEW_DURATION_MS / 2);
+  const last = yearPreviewFrame(start, tick, tick + YEAR_PREVIEW_DURATION_MS);
+  assert.equal(first.date.getTime(), start);
+  assert.equal(middle.date.getTime(), start + YEAR_PREVIEW_SPAN_MS / 2);
+  assert.equal(last.date.getTime(), start + YEAR_PREVIEW_SPAN_MS);
+  assert.equal(last.complete, true);
+});
+test('seasonal playback cannot overshoot when backgrounded', () => {
+  const frame = yearPreviewFrame(start, tick, tick + YEAR_PREVIEW_DURATION_MS * 5);
+  assert.equal(frame.progress, 1);
+  assert.equal(frame.date.getTime(), start + YEAR_PREVIEW_SPAN_MS);
+  assert.throws(() => yearPreviewFrame(start, tick, NaN), RangeError);
 });

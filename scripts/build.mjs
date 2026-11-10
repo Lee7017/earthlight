@@ -1,9 +1,26 @@
 import { build } from 'esbuild';
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import sharp from 'sharp';
 
 const outdir = '_site';
-const textures = ['earth_atmos_2048.jpg', 'earth_lights_2048.png'];
+const textures = [
+  {
+    type: 'day',
+    urls: [
+      'https://upload.wikimedia.org/wikipedia/commons/0/04/Solarsystemscope_texture_8k_earth_daymap.jpg',
+      'https://edu.solarsystemscope.com/textures/download/8k_earth_daymap.jpg',
+      'https://media.huira.space/data/textures/solar_system/8k_earth_daymap.jpg',
+    ],
+  },
+  {
+    type: 'night',
+    urls: [
+      'https://upload.wikimedia.org/wikipedia/commons/b/b3/Solarsystemscope_texture_8k_earth_nightmap.jpg',
+      'https://edu.solarsystemscope.com/textures/download/8k_earth_nightmap.jpg',
+    ],
+  },
+];
 
 await mkdir(path.join(outdir, 'assets'), { recursive: true });
 await mkdir(path.join(outdir, 'src'), { recursive: true });
@@ -42,26 +59,41 @@ await copyFile('src/styles.css', path.join(outdir, 'src/styles.css'));
 await copyFile('favicon.svg', path.join(outdir, 'favicon.svg'));
 await writeFile(path.join(outdir, '.nojekyll'), '');
 
-for (const filename of textures) {
-  const urls = [
-    'https://raw.githubusercontent.com/mrdoob/three.js/r180/examples/textures/planets/' + filename,
-    'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r180/examples/textures/planets/' + filename,
-  ];
-  let downloaded = false;
-  for (const url of urls) {
+// One-time build downloads only. The published site loads all textures from
+// GitHub Pages itself; visitors never contact Wikimedia or Solar System Scope.
+for (const asset of textures) {
+  let original = null;
+  for (const url of asset.urls) {
     try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
+      const response = await fetch(url, {
+        signal: AbortSignal.timeout(45000),
+        headers: { 'User-Agent': 'Earthlight/1.1 (static map build; CC BY 4.0 attribution)' },
+      });
       if (!response.ok) throw new Error('HTTP ' + response.status);
-      const buffer = Buffer.from(await response.arrayBuffer());
-      if (buffer.byteLength < 100000) throw new Error('Texture unexpectedly small: ' + buffer.length);
-      await writeFile(path.join(outdir, 'textures', filename), buffer);
-      console.log('Bundled local texture:', filename, buffer.byteLength + ' bytes');
-      downloaded = true;
+      const bytes = Buffer.from(await response.arrayBuffer());
+      const metadata = await sharp(bytes).metadata();
+      if (metadata.width !== 8192 || metadata.height !== 4096) {
+        throw new Error('Unexpected source dimensions ' + metadata.width + 'x' + metadata.height);
+      }
+      original = bytes;
+      console.log('Downloaded original 8K', asset.type, bytes.byteLength + ' bytes', url);
       break;
-    } catch (err) {
-      console.warn('Texture mirror failed:', url, err.message);
+    } catch (error) {
+      console.warn('8K texture mirror failed:', url, error.message);
     }
   }
-  if (!downloaded) throw new Error('Cannot build self-hosted texture: ' + filename);
+  if (!original) throw new Error('All 8K texture sources failed for ' + asset.type);
+
+  // 8K original for strong desktops, 4K for normal 2K monitors, 2K for phones.
+  await writeFile(path.join(outdir, 'textures', asset.type + '_8192.jpg'), original);
+  for (const width of [4096, 2048]) {
+    const height = width / 2;
+    const resized = await sharp(original)
+      .resize(width, height, { fit: 'fill', kernel: 'lanczos3' })
+      .jpeg({ quality: width === 4096 ? 92 : 88, mozjpeg: true })
+      .toBuffer();
+    await writeFile(path.join(outdir, 'textures', asset.type + '_' + width + '.jpg'), resized);
+    console.log('Generated', width + 'x' + height, asset.type, resized.length + ' bytes');
+  }
 }
-console.log('Built fully self-hosted JS and Earth textures:', generatedFile);
+console.log('Built 2K/4K/8K locally hosted Earth maps and JavaScript:', generatedFile);

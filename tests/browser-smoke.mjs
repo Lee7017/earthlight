@@ -44,6 +44,19 @@ try {
     'The old right-hand solar and legend panels should be removed');
   const mapLabel = await page.$eval('#map-quality', el => el.textContent);
   console.log('Desktop texture loaded:', mapLabel);
+  const frameStructure = await page.$eval('#globe-stage', el => ({
+    ringParent: el.dataset.horizontalRingParent,
+    bandParent: el.dataset.tropicsParent,
+    earthParent: el.dataset.earthSurfaceParent,
+    sunHeight: Number(el.dataset.sunlightHeight),
+    tilt: Number(el.dataset.axisTilt),
+  }));
+  assert.equal(frameStructure.ringParent, 'Scene', 'Sunlight circle must NOT spin with the Earth');
+  assert.equal(frameStructure.bandParent, 'tilted-axis', 'Tropics band must stay with the fixed tilted axis');
+  assert.equal(frameStructure.earthParent, 'spinning-geographic-surface');
+  assert.ok(Math.abs(frameStructure.sunHeight) < 1e-10, 'Sunlight direction should lie in horizontal tabletop plane');
+  assert.ok(Math.abs(frameStructure.tilt - 23.44 * Math.PI / 180) < .001);
+  console.log('Physical scene hierarchy: static horizontal circle, inclined tropics, spinning Earth: PASS');
   const globeWidth = await page.$eval('#globe-stage', el => el.getBoundingClientRect().width);
   assert.ok(globeWidth > 300, 'The shared Earth view should remain legible beside the orbit');
   assert.ok(await page.$('#orbit-mount canvas'), 'Heliocentric orbit must render its own interactive 3D canvas');
@@ -188,6 +201,9 @@ try {
   assert.equal(await page.$eval('#globe-stage', el => el.dataset.focusCity), 'beijing');
   console.log('Default Beijing camera reset: PASS');
 
+  const initialDayFrame = await page.$eval('#globe-stage', el => ({
+    spin: Number(el.dataset.earthSpin), heading: Number(el.dataset.sunlightHeading),
+  }));
   await page.click('#preview-toggle');
   await page.waitForFunction(
     () => document.querySelector('#preview-button-label')?.textContent === '退出 24 小时预演',
@@ -201,6 +217,14 @@ try {
   );
   const progress = await page.$eval('#preview-track', el => Number(el.getAttribute('aria-valuenow')));
   console.log('Preview advances:', progress + '%');
+  const laterDayFrame = await page.$eval('#globe-stage', el => ({
+    spin: Number(el.dataset.earthSpin), heading: Number(el.dataset.sunlightHeading),
+  }));
+  assert.ok(Math.abs(laterDayFrame.spin - initialDayFrame.spin) > .1,
+    'Earth surface must actually spin during 24-hour preview');
+  assert.ok(Math.abs(laterDayFrame.heading - initialDayFrame.heading) < .02,
+    'Sunlight circle should not rotate daily along with surface');
+  console.log('One-day playback: Earth spins but ecliptic sunlight heading stays almost fixed: PASS');
 
   await page.click('#preview-toggle');
   await page.waitForFunction(

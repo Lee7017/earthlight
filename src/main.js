@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { solarPosition, geographicVector, formatCoordinate } from './solar.js';
-import { previewFrame } from './preview.js';
+import { previewFrame, yearPreviewFrame, TROPICAL_YEAR_DAYS } from './preview.js';
+import { createOrbitViewer } from './orbitViewer.js';
 import { CITIES, getCityById } from './cities.js';
 
 const $ = (id) => document.getElementById(id);
@@ -193,6 +194,28 @@ const earth = new THREE.Mesh(earthGeometry, earthMaterial);
 earth.rotation.y = -Math.PI / 2;
 scene.add(earth);
 
+// The orbit view uses the identical Earth shader and UTC ephemeris, but
+// positions the Earth relative to a stationary Sun in ecliptic space.
+const orbitViewer = createOrbitViewer($('orbit-stage'), $('orbit-mount'), earthMaterial);
+let currentView = 'dual';
+const viewLayout = $('visualization-layout');
+
+function switchView(nextView) {
+  if (!['earth', 'orbit', 'dual'].includes(nextView)) return;
+  currentView = nextView;
+  viewLayout.dataset.view = nextView;
+  viewLayout.classList.toggle('is-dual', nextView === 'dual');
+  document.querySelectorAll('.mode-button').forEach(button => {
+    const selected = button.dataset.view === nextView;
+    button.classList.toggle('is-active', selected);
+    button.setAttribute('aria-pressed', String(selected));
+  });
+  requestAnimationFrame(() => { layout(); orbitViewer.resize(); });
+}
+document.querySelectorAll('.mode-button').forEach(button => {
+  button.addEventListener('click', () => switchView(button.dataset.view));
+});
+
 // A faint limb glow, kept deliberately separate from the day/night geometry.
 const atmosphere = new THREE.Mesh(
   new THREE.SphereGeometry(GLOBE_RADIUS * 1.032, 96, 64),
@@ -279,6 +302,10 @@ const sunAura = new THREE.Sprite(new THREE.SpriteMaterial({
 }));
 sunAura.scale.set(0.52, 0.52, 1);
 scene.add(sunAura);
+// The tiny near-Earth sun from the original visualization would imply that
+// the Sun orbits our planet. In the physical overview the Sun is at the focus.
+sunIndicator.visible = false;
+sunAura.visible = false;
 
 const loader = new THREE.TextureLoader();
 const MAX_TEXTURE = renderer.capabilities.maxTextureSize || 2048;
@@ -318,6 +345,7 @@ async function initTextures() {
       earthMaterial.uniforms.dayMap.value = maps[0];
       earthMaterial.uniforms.nightMap.value = maps[1];
       earthMaterial.needsUpdate = true;
+      orbitViewer.setTextures(maps[0], maps[1]);
       $('map-quality').textContent = '01 / EARTH VIEW · ' + (size / 1024) + 'K MAP';
       $('loading-overlay').classList.add('is-hidden');
       return;
@@ -433,53 +461,77 @@ let lastLiveSecond = -1;
 function renderAt(date) {
   updateClock(date);
   updateAstronomy(date);
+  orbitViewer.update(date);
+  document.body.dataset.timeMode = previewState?.type || 'live';
 }
 
-function setPreviewUI(enabled) {
-  $('preview-overlay').hidden = !enabled;
-  $('preview-toggle').classList.toggle('selected', enabled);
-  $('preview-toggle').setAttribute('aria-pressed', String(enabled));
-  $('preview-button-label').textContent = enabled ? '退出预演' : '24 小时预演';
-  $('preview-icon').textContent = enabled ? '■' : '▶';
-  $('clock-mode-label').textContent = enabled ? '预演时刻' : '当前时刻';
-  $('globe-mode-label').textContent = enabled ? '24H TIME-LAPSE' : 'LIVE ILLUMINATION';
-  $('globe-mode').classList.toggle('is-preview', enabled);
-  $('header-status').classList.toggle('is-preview', enabled);
-  $('header-status-label').textContent = enabled ? 'PREVIEW · +24H' : 'LIVE · REAL TIME';
+function setPreviewUI() {
+  const type = previewState?.type || null;
+  const active = Boolean(type);
+  $('preview-overlay').hidden = !active;
+
+  const dayActive = type === 'day';
+  const yearActive = type === 'year';
+  $('preview-toggle').classList.toggle('selected', dayActive);
+  $('preview-toggle').setAttribute('aria-pressed', String(dayActive));
+  $('preview-button-label').textContent = dayActive ? '退出 24 小时预演' : '24 小时预演';
+  $('preview-icon').textContent = dayActive ? '■' : '▶';
+
+  $('year-preview-toggle').classList.toggle('selected', yearActive);
+  $('year-preview-toggle').setAttribute('aria-pressed', String(yearActive));
+  $('year-preview-label').textContent = yearActive ? '退出四季预演' : '365 天 · 四季预演';
+  $('year-preview-icon').textContent = yearActive ? '■' : '◉';
+
+  $('clock-mode-label').textContent = active ? '预演时刻' : '当前时刻';
+  $('globe-mode-label').textContent = yearActive ? 'SEASONS · 1 YEAR' : dayActive ? '24H TIME-LAPSE' : 'LIVE ILLUMINATION';
+  $('globe-mode').classList.toggle('is-preview', active);
+  $('header-status').classList.toggle('is-preview', active);
+  $('header-status-label').textContent = yearActive ? 'PREVIEW · +1 YEAR' :
+    dayActive ? 'PREVIEW · +24H' : 'LIVE · REAL TIME';
+
+  $('preview-heading').textContent = yearActive ? '365D / SEASONS' : '24H / TIME-LAPSE';
+  $('preview-start-label').textContent = '从当前时刻开始';
+  $('preview-end-label').textContent = yearActive ? '未来一个回归年' : '未来 24 小时';
 }
 
 function showPreviewProgress(progress) {
-  const elapsedMinutes = Math.floor(progress * 1440);
-  const hours = String(Math.floor(elapsedMinutes / 60)).padStart(2, '0');
-  const minutes = String(elapsedMinutes % 60).padStart(2, '0');
-  $('preview-elapsed').textContent = '+' + hours + ':' + minutes + ' / +24:00';
+  if (previewState?.type === 'year') {
+    const days = Math.floor(progress * TROPICAL_YEAR_DAYS);
+    $('preview-elapsed').textContent = '+' + String(days).padStart(3, '0') + ' 天 / 365 天';
+  } else {
+    const elapsedMinutes = Math.floor(progress * 1440);
+    const hours = String(Math.floor(elapsedMinutes / 60)).padStart(2, '0');
+    const minutes = String(elapsedMinutes % 60).padStart(2, '0');
+    $('preview-elapsed').textContent = '+' + hours + ':' + minutes + ' / +24:00';
+  }
   $('preview-track-fill').style.width = (progress * 100).toFixed(2) + '%';
   $('preview-track').setAttribute('aria-valuenow', String(Math.round(progress * 100)));
 }
 
 function stopPreview() {
   previewState = null;
-  setPreviewUI(false);
+  setPreviewUI();
   lastLiveSecond = -1;
   renderAt(new Date());
 }
 
-$('preview-toggle').addEventListener('click', () => {
-  if (previewState) {
+function startPreview(type) {
+  if (previewState?.type === type) {
     stopPreview();
     return;
   }
-
   const now = new Date();
   previewState = {
-    realStartEpochMs: now.getTime(),
-    animationStartMs: performance.now(),
-    lastRenderedAt: -Infinity,
+    type, realStartEpochMs: now.getTime(),
+    animationStartMs: performance.now(), lastRenderedAt: -Infinity,
   };
-  setPreviewUI(true);
+  setPreviewUI();
   showPreviewProgress(0);
   renderAt(now);
-});
+}
+
+$('preview-toggle').addEventListener('click', () => startPreview('day'));
+$('year-preview-toggle').addEventListener('click', () => startPreview('year'));
 
 function animate(timestamp) {
   requestAnimationFrame(animate);
@@ -487,15 +539,11 @@ function animate(timestamp) {
   animateCityCamera(timestamp);
 
   if (previewState) {
-    const frame = previewFrame(
-      previewState.realStartEpochMs,
-      previewState.animationStartMs,
-      timestamp,
-    );
+    const timeFunction = previewState.type === 'year' ? yearPreviewFrame : previewFrame;
+    const frame = timeFunction(previewState.realStartEpochMs, previewState.animationStartMs, timestamp);
     if (frame.complete) {
-      // Never leave the globe, clock or Sun data in simulated future time.
       stopPreview();
-    } else if (timestamp - previewState.lastRenderedAt >= 50) {
+    } else if (timestamp - previewState.lastRenderedAt >= (previewState.type === 'year' ? 16 : 50)) {
       previewState.lastRenderedAt = timestamp;
       renderAt(frame.date);
       showPreviewProgress(frame.progress);
@@ -514,6 +562,7 @@ function animate(timestamp) {
     updatePin(marker.element, geoVector(marker.city.latitude, marker.city.longitude, GLOBE_RADIUS * 1.019));
   }
   updatePin($('sun-pin'), currentSun.clone().multiplyScalar(GLOBE_RADIUS * 1.018));
-  renderer.render(scene, camera);
+  if (currentView !== 'orbit') renderer.render(scene, camera);
+  if (currentView !== 'earth') orbitViewer.render();
 }
 requestAnimationFrame(animate);

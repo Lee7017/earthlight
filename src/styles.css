@@ -221,9 +221,9 @@ h1 span { color: var(--teal); margin-left: 6px; }
 }
 .sunlight-key > span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .sunlight-key i { display: inline-block; flex: none; width: 15px; height: 3px; border-radius: 6px; }
-.key-tropics { background: rgba(235,182,119,.82); }
-.key-orbit-ring { background: #87e5d6; }
-.key-ray { background: linear-gradient(90deg,#c78642,#ffdb9f); }
+.key-tropics { background: rgba(182,108,255,.85); }
+.key-orbit-ring { background: #ffb000; height: 2px !important; }
+.key-ray { background: #ffb000; height: 4px !important; }
 @media (max-width: 760px) {
   .sunlight-key { right: 11px; bottom: 12px; gap: 5px 9px; max-width: 73%; font-size: 9px; }
   .sunlight-key i { width: 11px; height: 2px; }

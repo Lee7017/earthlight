@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { solarPosition, geographicVector, formatCoordinate } from './solar.js';
 import { previewFrame, yearPreviewFrame, TROPICAL_YEAR_DAYS } from './preview.js';
 import { createOrbitViewer } from './orbitViewer.js';
+import { createIlluminationRig } from './illuminationScene.js';
 import { CITIES, getCityById } from './cities.js';
 
 const $ = (id) => document.getElementById(id);
@@ -65,7 +66,7 @@ function syncCityUI() {
 }
 
 function snapCameraTo(city, distance = defaultCameraDistance) {
-  camera.position.copy(geoVector(city.latitude, city.longitude, distance));
+  camera.position.copy(illuminationRig.worldGeo(city.latitude, city.longitude, 1).normalize().multiplyScalar(distance));
   camera.up.set(0, 1, 0);
   camera.lookAt(0, 0, 0);
   controls.target.set(0, 0, 0);
@@ -78,7 +79,6 @@ function resetCamera() {
   snapCameraTo(DEFAULT_CITY);
   syncCityUI();
 }
-resetCamera();
 $('reset-view').addEventListener('click', resetCamera);
 
 function focusCity(id) {
@@ -88,7 +88,7 @@ function focusCity(id) {
   syncCityUI();
   const distance = camera.position.length();
   const from = camera.position.clone().normalize();
-  const to = geoVector(city.latitude, city.longitude).normalize();
+  const to = illuminationRig.worldGeo(city.latitude, city.longitude, 1).normalize();
   const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   if (reduceMotion) {
     cityCameraMotion = null;
@@ -192,7 +192,10 @@ const earth = new THREE.Mesh(earthGeometry, earthMaterial);
 // SphereGeometry's equirectangular u=0.5 points toward +X.
 // Rotate Greenwich to +Z; the geographic axes then match src/solar.js.
 earth.rotation.y = -Math.PI / 2;
-scene.add(earth);
+const illuminationRig = createIlluminationRig(scene, earth, GLOBE_RADIUS);
+// The initial camera faces Beijing once, then stays in inertial space while
+// the globe rotates beneath it. Clicking a city re-centers the camera.
+resetCamera();
 
 // The orbit view uses the identical Earth shader and UTC ephemeris, but
 // positions the Earth relative to a stationary Sun in ecliptic space.
@@ -407,13 +410,21 @@ function updateClock(now) {
 
 let currentSun = new THREE.Vector3();
 function updateAstronomy(now) {
+  const state = illuminationRig.update(now);
   const subsolar = solarPosition(now);
-  currentSun.copy(geoVector(subsolar.latitude, subsolar.longitude)).normalize();
+  // Sunlight is horizontal in the ecliptic/tabletop reference frame, and
+  // does NOT chase the textured Earth's daily spin.
+  currentSun.set(...state.incomingSun).normalize();
   sunUniform.value.copy(currentSun);
   subsolarMarker.position.copy(currentSun).multiplyScalar(GLOBE_RADIUS * 1.012);
-  sunIndicator.position.copy(currentSun).multiplyScalar(3.15);
-  sunAura.position.copy(sunIndicator.position);
   updateTerminator(currentSun);
+
+  stage.dataset.sunlightHeading = String(state.orbitalHeading);
+  stage.dataset.earthSpin = String(state.spin);
+  stage.dataset.axisTilt = String(state.axisTilt);
+  stage.dataset.sunlightHeight = String(currentSun.y);
+  stage.dataset.illuminationFrame = 'orbital-plane';
+  stage.dataset.beltFrame = 'inclined-axis';
 
   $('sun-latitude').textContent = formatCoordinate(subsolar.latitude, 'lat');
   $('sun-longitude').textContent = formatCoordinate(subsolar.longitude, 'lon');
@@ -568,9 +579,9 @@ function animate(timestamp) {
     }
   }
 
-  updatePin($('city-pin'), geoVector(activeCity.latitude, activeCity.longitude, GLOBE_RADIUS * 1.018));
+  updatePin($('city-pin'), illuminationRig.worldGeo(activeCity.latitude, activeCity.longitude, GLOBE_RADIUS * 1.034));
   for (const marker of cityDots) {
-    updatePin(marker.element, geoVector(marker.city.latitude, marker.city.longitude, GLOBE_RADIUS * 1.019));
+    updatePin(marker.element, illuminationRig.worldGeo(marker.city.latitude, marker.city.longitude, GLOBE_RADIUS * 1.035));
   }
   updatePin($('sun-pin'), currentSun.clone().multiplyScalar(GLOBE_RADIUS * 1.018));
   if (currentView !== 'orbit') renderer.render(scene, camera);

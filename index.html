@@ -69,12 +69,17 @@
 
         <div class="visualization-layout is-dual" id="visualization-layout" data-view="dual">
           <section class="globe-stage" id="globe-stage" aria-label="实时地球昼夜光影">
-            <div class="panel-heading"><span class="panel-identity">地球昼夜</span><span class="panel-detail">实时晨昏线</span></div>
+            <div class="panel-heading"><span class="panel-identity">地球昼夜</span><span class="panel-detail">地轴倾斜 · 太阳来光</span></div>
             <div id="globe-mount" class="globe-mount" aria-label="拖动旋转或滚轮缩放地球"></div>
             <div class="loading-overlay" id="loading-overlay"><span class="loading-ring"></span><span>正在加载地球…</span></div>
             <div class="globe-pin focused-city-pin" id="city-pin"><span class="pin-node"></span><span class="pin-text" id="focused-city-label">中国 · 北京</span></div>
-            <div class="globe-pin sun-pin" id="sun-pin"><span class="pin-node"></span><span class="pin-text">太阳直射点</span></div>
-            <span class="panel-tip">拖动旋转 · 滚轮缩放</span>
+            <div class="globe-pin sun-pin" id="sun-pin"><span class="pin-node"></span><span class="pin-text">此刻直射点</span></div>
+            <div class="sunlight-key" aria-label="金色斜带代表南北回归线之间，绿色水平圈代表一年中的太阳来光方向，金色箭头代表此刻照来的阳光">
+              <span><i class="key-tropics" aria-hidden="true"></i>南北回归线带</span>
+              <span><i class="key-orbit-ring" aria-hidden="true"></i>水平来光圈</span>
+              <span><i class="key-ray" aria-hidden="true"></i>此刻阳光</span>
+            </div>
+            <span class="panel-tip">地球自转 · 来光随公转改变方向</span>
           </section>
           <section class="orbit-stage" id="orbit-stage" aria-label="太阳固定在中心，地球公转、自转和四季轨道">
             <div class="orbit-mount" id="orbit-mount"></div>

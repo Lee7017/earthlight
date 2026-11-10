@@ -205,6 +205,7 @@ h1 span { color: var(--teal); margin-left: 6px; }
   .footer { flex: none; padding: 13px 14px; gap: 6px; flex-wrap: wrap; font-size: 9px; line-height: 1.6; }
 }
 @media (max-width: 360px) {
+  .header-right .live-pill { display: none; }
   .topbar { padding: 0 11px; }
   .header-right { gap: 7px; }
   .live-pill { font-size: 9px; }
